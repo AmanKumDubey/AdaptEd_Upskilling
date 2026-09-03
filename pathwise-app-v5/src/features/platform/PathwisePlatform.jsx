@@ -12,6 +12,7 @@ const VIEW_ROUTES = {
   courses: "/courses",
   wallet: "/skills",
   assess: "/assessment",
+  account: "/profile",
   "emp-dashboard": "/employer",
   "emp-team": "/employer/team",
   "emp-assess": "/employer/assessments",

@@ -1,13 +1,23 @@
+import { useLocation } from "react-router-dom";
 import App from "./App";
 import { LoadingState } from "../components/LoadingAndError";
 import { AuthProvider } from "../context/AuthProvider";
 import { useAuth } from "../hooks/useAuth";
 import { LoginPage } from "../pages/Login";
+import { OAuthCallbackPage } from "../pages/OAuthCallback";
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 
 function AuthenticatedApp() {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+
+  // Must win regardless of isAuthenticated/loading - this is the one route
+  // that's still mid-login when it first renders, so neither branch below
+  // should get a chance to bounce it to the login screen first.
+  if (location.pathname === "/auth/callback") {
+    return <OAuthCallbackPage />;
+  }
 
   if (loading) {
     return (

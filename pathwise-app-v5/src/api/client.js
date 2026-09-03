@@ -5,7 +5,7 @@
 // Change API_BASE_URL to point to your server.
 // ─────────────────────────────────────────────────────────────────────
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 // ─── Token Management ────────────────────────────────────────────────
 let accessToken = localStorage.getItem("pathwise_token") || null;

@@ -22,8 +22,6 @@ import {
 const userExperienceLevelEnum = pgEnum('enum_Users_experienceLevel', ['beginner', 'intermediate', 'advanced']);
 const userThemePreferenceEnum = pgEnum('enum_Users_themePreference', ['light', 'dark']);
 const userRoleEnum = pgEnum('enum_Users_role', ['admin', 'user', 'moderator']);
-const oauthProviderEnum = pgEnum('enum_OAuthSessions_provider', ['google', 'linkedin']);
-const userIdentityProviderEnum = pgEnum('enum_UserIdentities_provider', ['google', 'linkedin']);
 const coursePlatformEnum = pgEnum('enum_Courses_platform', ['coursera', 'udemy', 'skillshare']);
 const reviewPlatformEnum = pgEnum('enum_Reviews_platform', ['coursera', 'udemy', 'skillshare']);
 const userCourseStatusEnum = pgEnum('enum_UserCourses_status', [
@@ -58,19 +56,13 @@ const users = pgTable('Users', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
 
-const oauthSessions = pgTable('OAuthSessions', {
-  id: uuid('id').primaryKey(),
-  provider: oauthProviderEnum('provider').notNull(),
-  state: varchar('state', { length: 255 }).notNull().unique(),
-  nonce: varchar('nonce', { length: 255 }).notNull(),
-  codeVerifier: varchar('codeVerifier', { length: 255 }),
-  redirectUri: varchar('redirectUri', { length: 2048 }),
-  userId: uuid('userId'),
-  expiresAt: timestamp('expiresAt', { withTimezone: true }).notNull(),
-  usedAt: timestamp('usedAt', { withTimezone: true }),
-  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
-});
+// Phase B7 (social login): OAuthSessions/UserIdentities backed the old
+// hand-rolled Google/LinkedIn flow, replaced by better-auth's own built-in
+// social sign-in (auth/config.ts's socialProviders + server.ts's catch-all
+// mount) - better-auth manages its own state/PKCE and identity linking via
+// its account table, so these have no reader left. The live DB tables
+// themselves are left in place (not dropped) pending a deliberate decision,
+// same as B3's orphaned ScrapeRuns table.
 
 const passwordResets = pgTable('PasswordResets', {
   id: uuid('id').primaryKey(),
@@ -144,18 +136,6 @@ const certificates = pgTable('Certificates', {
   contentType: varchar('contentType', { length: 255 }),
   sizeBytes: integer('sizeBytes'),
   uploadedAt: timestamp('uploadedAt', { withTimezone: true }).notNull(),
-  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
-  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
-});
-
-const userIdentities = pgTable('UserIdentities', {
-  id: uuid('id').primaryKey(),
-  userId: uuid('userId').notNull(),
-  provider: userIdentityProviderEnum('provider').notNull(),
-  providerUserId: varchar('providerUserId', { length: 255 }).notNull(),
-  email: varchar('email', { length: 255 }),
-  accessTokenHash: text('accessTokenHash'),
-  refreshTokenHash: text('refreshTokenHash'),
   createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
@@ -280,13 +260,11 @@ const invitations = pgTable('Invitations', {
 
 module.exports = {
   users,
-  oauthSessions,
   passwordResets,
   courses,
   reviews,
   userCourses,
   certificates,
-  userIdentities,
   userRecommendations,
   authUser,
   authSession,

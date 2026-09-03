@@ -59,8 +59,12 @@ const register = asyncHandler(async (req, res) => {
 
   const authUserId = signUpResult.user.id;
 
-  const [user] = await db.insert(users).values(withTimestamps({
-    id: authUserId,
+  // Phase B7: auth/config.ts's databaseHooks.user.create.after already fires
+  // during signUpEmail() above and inserts a bare-minimum row for this same
+  // id (the hook has no access to this request's form fields, only the name/
+  // email better-auth itself knows) - upsert so this enriches that row
+  // instead of colliding with it on the primary key.
+  const registrationFields = {
     username: finalUsername,
     email,
     // Phase B4: password now lives on better-auth's account table; this column
@@ -76,7 +80,11 @@ const register = asyncHandler(async (req, res) => {
     themePreference: themePreference || 'light',
     onboardingCompleted: true,
     lastLogin: new Date(),
-  })).returning();
+  };
+  const [user] = await db.insert(users)
+    .values(withTimestamps({ id: authUserId, ...registrationFields }))
+    .onConflictDoUpdate({ target: users.id, set: touch(registrationFields) })
+    .returning();
 
   const userData = sanitizeUser(user);
   sendSuccess(res, 'User registered successfully', {

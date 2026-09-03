@@ -13,20 +13,13 @@ const {
 } = require('../controllers/authController');
 
 const {
-  googleStart,
-  googleCallback,
-  linkedinStart,
-  linkedinCallback,
-} = require('../controllers/socialAuthController');
-
-const {
   requestReset,
   verifyResetOTP,
   resetPassword,
 } = require('../controllers/passwordResetController');
 
 // Import middleware
-const { authenticate, optionalAuth } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { authLimiter, otpLimiter } = require('../middleware/rateLimit');
 const { registerSchema, loginSchema, profileUpdateSchema, passwordChangeSchema } = require('../schemas/authSchemas');
@@ -37,11 +30,14 @@ const { passwordForgotSchema, passwordVerifyOtpSchema, passwordResetSchema } = r
 router.post('/register', authLimiter, validate(registerSchema), register);
 router.post('/login', authLimiter, validate(loginSchema), login);
 
-// Social login routes (also public)
-router.get('/google/start', optionalAuth, googleStart);
-router.get('/google/callback', googleCallback);
-router.get('/linkedin/start', optionalAuth, linkedinStart);
-router.get('/linkedin/callback', linkedinCallback);
+// Social login (Google/LinkedIn) is handled entirely by better-auth's own
+// routes under /api/auth/sign-in/social and /api/auth/callback/:provider -
+// see server.ts's catch-all mount. The old hand-rolled OAuth flow (this
+// file's previous googleStart/googleCallback/linkedinStart/linkedinCallback,
+// backed by OAuthSessions/UserIdentities) issued its own JWT instead of a
+// better-auth session, and redirected the frontend with a token in a URL
+// query string that nothing in the actual frontend ever read - replaced
+// rather than patched.
 
 // Password Reset routes (also public) - otpLimiter is tighter than
 // authLimiter since these guard a guessable 6-digit code.
@@ -49,12 +45,14 @@ router.post('/password/forgot', authLimiter, validate(passwordForgotSchema), req
 router.post('/password/verify-otp', otpLimiter, validate(passwordVerifyOtpSchema), verifyResetOTP);
 router.post('/password/reset', authLimiter, validate(passwordResetSchema), resetPassword);
 
-// Protected routes (require authentication)
-router.use(authenticate); // Apply authentication to all routes below
-
-router.get('/profile', getProfile);
-router.put('/profile', validate(profileUpdateSchema), updateProfile);
-router.put('/change-password', validate(passwordChangeSchema), changePassword);
-router.post('/logout', logout);
+// Protected routes (require authentication) - authenticate is applied per-route,
+// not via a blanket router.use(authenticate), because a path-less router.use()
+// runs for every request that reaches this point in the stack - including ones
+// no route below it matches (e.g. /sign-in/social), which would 401 them before
+// they ever fall through to server.ts's better-auth catch-all.
+router.get('/profile', authenticate, getProfile);
+router.put('/profile', authenticate, validate(profileUpdateSchema), updateProfile);
+router.put('/change-password', authenticate, validate(passwordChangeSchema), changePassword);
+router.post('/logout', authenticate, logout);
 
 module.exports = router;

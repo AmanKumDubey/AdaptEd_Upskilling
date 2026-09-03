@@ -60,7 +60,8 @@
 .mode-switcher .is-active { color: #2563EB; font-weight: 600; }
 .mode-switcher .toggle-track { padding: 0; border: 1px solid rgba(148,163,184,0.1); }
 .app-navigation { display: flex; flex-direction: column; gap: 3px; flex: 1; }
-.app-navigation .nav-item { width: 100%; border: 0; background: transparent; text-align: left; justify-content: flex-start; font-family: inherit; }
+.app-navigation .nav-item, .app-navigation-footer .nav-item { width: 100%; border: 0; background: transparent; text-align: left; justify-content: flex-start; font-family: inherit; }
+.app-navigation-footer { display: flex; flex-direction: column; gap: 3px; margin-bottom: 12px; }
 .is-collapsed .nav-item { justify-content: center; }
 .nav-icon { font-size: 15px; flex-shrink: 0; opacity: 0.8; }
 .pro-card { padding: 16px; border: 1px solid rgba(37,99,235,0.1); border-radius: 14px; background: linear-gradient(135deg,rgba(37,99,235,0.06),rgba(139,92,246,0.04)); }
@@ -104,23 +105,28 @@
   .brand-name,
   .mode-switcher,
   .pro-card,
+  .sidebar-logout,
   .sidebar-collapse {
     display: none;
   }
 
-  .app-navigation {
+  .app-navigation,
+  .app-navigation-footer {
     min-width: 0;
     flex-direction: row;
     gap: 2px;
     overflow-x: auto;
     scrollbar-width: none;
+    margin-bottom: 0;
   }
 
-  .app-navigation::-webkit-scrollbar {
+  .app-navigation::-webkit-scrollbar,
+  .app-navigation-footer::-webkit-scrollbar {
     display: none;
   }
 
   .app-navigation .nav-item,
+  .app-navigation-footer .nav-item,
   .is-collapsed .nav-item {
     width: auto;
     flex: 0 0 auto;

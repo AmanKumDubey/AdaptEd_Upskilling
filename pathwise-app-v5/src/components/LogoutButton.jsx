@@ -3,10 +3,10 @@
 // mode (see src/app/Root.jsx).
 import { useAuth } from "../hooks/useAuth";
 
-export function LogoutButton({ style }) {
+export function LogoutButton({ style, className = "" }) {
   const { logout } = useAuth();
   return (
-    <button type="button" className="btn-ghost" style={style} onClick={() => logout()}>
+    <button type="button" className={`btn-ghost ${className}`.trim()} style={style} onClick={() => logout()}>
       Log out
     </button>
   );

@@ -6,10 +6,40 @@
 // Every response here is already unwrapped to `data` by api/client.js.
 // ─────────────────────────────────────────────────────────────────────
 
-import api from "./client";
+import api, { API_BASE_URL } from "./client";
 
 // ─── Auth ────────────────────────────────────────────────────────────
 export const auth = {
+  // POST /api/auth/sign-in/social - one of better-auth's own routes (see
+  // adapted-backend/server.ts's catch-all mount), not our own controller, so
+  // its response isn't wrapped in the { status, message, data } envelope -
+  // call fetch directly rather than through api.post. -> { url, redirect }
+  //
+  // `credentials: "include"` is required here, not optional: this response
+  // sets a signed `state` cookie that the callback step later re-checks
+  // against the `state` query param Google sends back (a CSRF guard, on top
+  // of the DB-stored verification row) - without it the browser never stores
+  // that cookie, and the callback fails with state_mismatch even though the
+  // rest of the flow is otherwise correct (confirmed against better-auth's
+  // own source: node_modules/better-auth/dist/state.mjs's parseGenericState).
+  signInWithSocial: (provider, callbackURL) =>
+    fetch(`${API_BASE_URL}/auth/sign-in/social`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider, callbackURL }),
+    }).then((res) => res.json()),
+
+  // GET /api/auth/get-session - another better-auth-native route. After the
+  // OAuth redirect completes, better-auth has set its session as an HttpOnly
+  // cookie on the backend's own origin (not this app's) - `credentials:
+  // "include"` is what actually sends that cookie cross-origin here.
+  // -> { session: { token, ... }, user } | null
+  getBetterAuthSession: () =>
+    fetch(`${API_BASE_URL}/auth/get-session`, { credentials: "include" }).then((res) =>
+      res.ok ? res.json() : null
+    ),
+
   // POST /api/auth/register  { username?, email, password, firstName?,
   // lastName?, phone?, goals?, interests?, experienceLevel?, themePreference? }
   // -> { user, token }

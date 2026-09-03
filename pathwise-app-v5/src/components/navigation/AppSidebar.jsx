@@ -1,3 +1,7 @@
+import { LogoutButton } from "../LogoutButton";
+
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
+
 const learnerItems = [
   { id: "dashboard", label: "Dashboard", icon: "⬡" },
   { id: "path", label: "Learning Path", icon: "◇" },
@@ -60,11 +64,27 @@ export function AppSidebar({
         ))}
       </nav>
 
+      <nav className="app-navigation-footer" aria-label="Account">
+        <button
+          type="button"
+          className={`nav-item ${currentView === "account" ? "active" : ""}`}
+          onClick={() => onChangeView("account")}
+          title={collapsed ? "Profile" : undefined}
+        >
+          <span className="nav-icon" aria-hidden="true">☺</span>
+          {!collapsed && <span>Profile</span>}
+        </button>
+      </nav>
+
       {!collapsed && (
         <div className="pro-card">
           <div className="pro-card-title">Pro Plan</div>
           <div className="pro-card-copy">Unlimited courses & assessments</div>
         </div>
+      )}
+
+      {authEnabled && !collapsed && (
+        <LogoutButton className="sidebar-logout" style={{ width: "100%", marginTop: 10, padding: "10px 16px", fontSize: 13 }} />
       )}
 
       <button

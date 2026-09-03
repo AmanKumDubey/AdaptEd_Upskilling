@@ -45,6 +45,21 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/auth', authRoutes);
+
+// better-auth's own routes (sign-in/social, callback/:provider, get-session,
+// etc.) - only reached for /api/auth/* paths authRoutes itself didn't match,
+// since authRoutes is mounted first and Express falls through on no match.
+app.all('/api/auth/*', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    const { getAuth } = require('./auth/config');
+    const { toNodeHandler } = await import('better-auth/node');
+    const auth = await getAuth();
+    return toNodeHandler(auth.handler)(req, res);
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use('/api/onboarding', onboardingRoutes);
 
 // User-specific course routes (wishlist, continue learning, enroll/verify)

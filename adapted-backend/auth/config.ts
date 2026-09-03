@@ -14,6 +14,7 @@ async function buildAuth() {
   const { bearer } = await import('better-auth/plugins');
   const { db } = require('../db/client');
   const dbSchema = require('../db/schema');
+  const { withTimestamps } = require('../db/helpers');
 
   const socialProviders: Record<string, { clientId: string; clientSecret: string }> = {};
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
@@ -65,6 +66,34 @@ async function buildAuth() {
     },
     socialProviders,
     plugins: [bearer()],
+    // Phase B7 (social login): a Google/LinkedIn sign-in creates a row on
+    // better-auth's own `user` table but never touches our app's separate
+    // `users` table (role, username, isActive, goals, ...) - authenticate()
+    // looks *that* row up, so without this hook every fresh social sign-in
+    // would 401 with "User no longer exists". Email/password registration
+    // already inserts its own (richer) row in authController.js's register()
+    // - that insert now upserts on this same id, so whichever path runs
+    // first "wins" the base row and the other only fills it in.
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user: { id: string; name?: string; email: string }) => {
+            const [firstName, ...rest] = (user.name || '').trim().split(/\s+/).filter(Boolean);
+            await db.insert(dbSchema.users).values(withTimestamps({
+              id: user.id,
+              username: `user-${user.id.slice(0, 8)}`,
+              email: user.email,
+              password: 'managed-by-better-auth',
+              firstName: firstName || null,
+              lastName: rest.join(' ') || null,
+              goals: [],
+              interests: [],
+              themePreference: 'light',
+            })).onConflictDoNothing({ target: dbSchema.users.id });
+          },
+        },
+      },
+    },
   });
 }
 
