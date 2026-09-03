@@ -1,0 +1,89 @@
+# Phase B6: typecheck -> build -> test on every push, blocking a merge on any
+# failing stage. Targets GitLab CI to match this repo's actual remote
+# (gitlab.com/adapted/adapted-backend), not a generic default.
+image: node:20-alpine
+
+stages:
+  - install
+  - verify
+  - test
+
+variables:
+  NODE_ENV: test
+
+cache: &node_modules_cache
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - node_modules/
+
+install_dependencies:
+  stage: install
+  script:
+    - npm ci
+  cache:
+    <<: *node_modules_cache
+    policy: pull-push
+
+typecheck:
+  stage: verify
+  needs: ["install_dependencies"]
+  cache:
+    <<: *node_modules_cache
+    policy: pull
+  script:
+    - npm run typecheck
+
+build:
+  stage: verify
+  needs: ["install_dependencies"]
+  cache:
+    <<: *node_modules_cache
+    policy: pull
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 hour
+
+unit_tests:
+  stage: test
+  needs: ["install_dependencies"]
+  cache:
+    <<: *node_modules_cache
+    policy: pull
+  script:
+    - npm test
+
+# Phase B6: closes the "today's tests are 100% mocked" gap - a real Postgres
+# service container, migrations applied, then the actual server (via tsx,
+# exactly like dev/prod - see tests/integration/globalSetup.js for why not
+# in-process) exercised over real HTTP.
+integration_tests:
+  stage: test
+  needs: ["install_dependencies"]
+  cache:
+    <<: *node_modules_cache
+    policy: pull
+  services:
+    - name: postgres:17-alpine
+      alias: postgres
+  variables:
+    POSTGRES_DB: adapted_ci
+    POSTGRES_PASSWORD: adapted_ci_password
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_NAME: adapted_ci
+    DB_USER: postgres
+    DB_PASSWORD: adapted_ci_password
+    JWT_SECRET: gitlab-ci-only-secret-at-least-32-characters-long
+    FRONTEND_URL: http://localhost:3000
+    CORS_ORIGIN: http://localhost:3000
+  before_script:
+    - apk add --no-cache postgresql-client
+    - until pg_isready -h postgres -p 5432 -U postgres; do sleep 1; done
+  script:
+    - npm run db:migrate
+    - npm run test:integration

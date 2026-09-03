@@ -1,0 +1,63 @@
+{
+  "name": "asi-core-backend",
+  "version": "1.0.0",
+  "description": "Node.js backend with Express and PostgreSQL using MVC architecture",
+  "main": "dist/server.js",
+  "scripts": {
+    "start": "node dist/server.js",
+    "dev": "nodemon --watch . --ext ts,js,json --ignore dist --exec tsx server.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "worker": "node dist/workers/recommendationWorker.js",
+    "dev:worker": "nodemon --watch . --ext ts,js,json --ignore dist --exec tsx workers/recommendationWorker.js",
+    "db:migrate": "tsx scripts/migrate.js",
+    "test": "jest --runInBand",
+    "test:watch": "jest --watch",
+    "test:integration": "jest --config jest.integration.config.js --runInBand",
+    "openapi:generate": "tsx scripts/generateOpenApi.ts"
+  },
+  "keywords": [
+    "nodejs",
+    "express",
+    "postgresql",
+    "mvc",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.975.0",
+    "@aws-sdk/client-ses": "^3.890.0",
+    "@aws-sdk/s3-request-presigner": "^3.975.0",
+    "bcryptjs": "^2.4.3",
+    "better-auth": "^1.7.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "drizzle-orm": "^0.45.2",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "puppeteer": "^24.24.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.14",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^20.19.0",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^6.0.3",
+    "drizzle-kit": "^0.31.10",
+    "jest": "^29.6.2",
+    "nodemon": "^3.0.1",
+    "supertest": "^6.3.3",
+    "ts-jest": "^29.4.12",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  }
+}
