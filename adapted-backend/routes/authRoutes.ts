@@ -10,6 +10,10 @@ const {
   getProfile,
   updateProfile,
   changePassword,
+  presignAvatarUpload,
+  confirmAvatarUpload,
+  removeAvatar,
+  deleteAccount,
 } = require('../controllers/authController');
 
 const {
@@ -22,7 +26,15 @@ const {
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { authLimiter, otpLimiter } = require('../middleware/rateLimit');
-const { registerSchema, loginSchema, profileUpdateSchema, passwordChangeSchema } = require('../schemas/authSchemas');
+const {
+  registerSchema,
+  loginSchema,
+  profileUpdateSchema,
+  passwordChangeSchema,
+  presignAvatarSchema,
+  confirmAvatarSchema,
+  deleteAccountSchema,
+} = require('../schemas/authSchemas');
 const { passwordForgotSchema, passwordVerifyOtpSchema, passwordResetSchema } = require('../schemas/passwordResetSchemas');
 
 // Public routes - Phase B6: authLimiter throttles repeated register/login
@@ -54,5 +66,10 @@ router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, validate(profileUpdateSchema), updateProfile);
 router.put('/change-password', authenticate, validate(passwordChangeSchema), changePassword);
 router.post('/logout', authenticate, logout);
+
+router.post('/avatar/presign', authenticate, validate(presignAvatarSchema), presignAvatarUpload);
+router.put('/avatar', authenticate, validate(confirmAvatarSchema), confirmAvatarUpload);
+router.delete('/avatar', authenticate, removeAvatar);
+router.delete('/account', authenticate, validate(deleteAccountSchema), deleteAccount);
 
 module.exports = router;

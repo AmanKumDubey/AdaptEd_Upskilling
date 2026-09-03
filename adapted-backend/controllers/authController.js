@@ -1,8 +1,10 @@
+const crypto = require('crypto');
 const { eq } = require('drizzle-orm');
 const { db } = require('../db/client');
 const { users, authUser } = require('../db/schema');
 const { withTimestamps, touch } = require('../db/helpers');
 const { getAuth } = require('../auth/config');
+const { presignPutObject, presignGetObject, deleteObject } = require('../services/s3Service');
 const {
   sendSuccess,
   sendError,
@@ -14,6 +16,26 @@ const { HTTP_STATUS } = require('../utilities/constants');
 const displayName = ({ firstName, lastName, username }) => {
   const full = `${firstName || ''} ${lastName || ''}`.trim();
   return full || username;
+};
+
+// Every response that includes a user object goes through this so the
+// frontend can always just <img src={user.avatarUrl}> - the bucket stays
+// private, so `avatar` (the raw S3 key) is only ever useful server-side to
+// mint a fresh short-lived signed GET url on the way out.
+const withAvatarUrl = async (userData) => {
+  if (!userData.avatar) return { ...userData, avatarUrl: null };
+  const { downloadUrl } = await presignGetObject({ key: userData.avatar, expiresInSeconds: 900 });
+  return { ...userData, avatarUrl: downloadUrl };
+};
+
+const sanitizeFileName = (fileName) => {
+  const base = String(fileName || '').trim().split('/').pop().split('\\').pop();
+  return base.replace(/[^a-zA-Z0-9._-]/g, '_') || 'avatar';
+};
+
+const buildAvatarKey = ({ userId, fileName }) => {
+  const rand = crypto.randomBytes(10).toString('hex');
+  return `avatars/${userId}/${Date.now()}-${rand}-${sanitizeFileName(fileName)}`;
 };
 
 // Register new user
@@ -86,7 +108,7 @@ const register = asyncHandler(async (req, res) => {
     .onConflictDoUpdate({ target: users.id, set: touch(registrationFields) })
     .returning();
 
-  const userData = sanitizeUser(user);
+  const userData = await withAvatarUrl(sanitizeUser(user));
   sendSuccess(res, 'User registered successfully', {
     user: userData,
     token: signUpResult.token,
@@ -116,7 +138,7 @@ const login = asyncHandler(async (req, res) => {
 
   const [updated] = await db.update(users).set(touch({ lastLogin: new Date() })).where(eq(users.id, user.id)).returning();
 
-  const userData = sanitizeUser(updated);
+  const userData = await withAvatarUrl(sanitizeUser(updated));
 
   sendSuccess(res, 'Login successful', {
     user: userData,
@@ -132,7 +154,7 @@ const getProfile = asyncHandler(async (req, res) => {
     return sendError(res, HTTP_STATUS.NOT_FOUND, 'User not found');
   }
 
-  const userData = sanitizeUser(user);
+  const userData = await withAvatarUrl(sanitizeUser(user));
 
   sendSuccess(res, 'Profile retrieved successfully', {
     user: userData
@@ -179,7 +201,7 @@ const updateProfile = asyncHandler(async (req, res) => {
       await db.update(authUser).set(touch(authUpdate)).where(eq(authUser.id, userId));
     }
 
-    const userData = sanitizeUser(user);
+    const userData = await withAvatarUrl(sanitizeUser(user));
 
     sendSuccess(res, 'Profile updated successfully', {
       user: userData
@@ -225,11 +247,91 @@ const logout = asyncHandler(async (req, res) => {
   sendSuccess(res, 'Logged out successfully');
 });
 
+// POST /api/auth/avatar/presign  { fileName, contentType } -> a presigned S3
+// PUT url the client uploads the image bytes to directly (bucket stays
+// private - see withAvatarUrl for how it's ever read back).
+const presignAvatarUpload = asyncHandler(async (req, res) => {
+  const { fileName, contentType } = req.body;
+  const key = buildAvatarKey({ userId: req.user.userId, fileName });
+
+  const { uploadUrl, bucket, expiresInSeconds } = await presignPutObject({
+    key,
+    contentType,
+    expiresInSeconds: 300,
+  });
+
+  sendSuccess(res, 'Upload URL created', { uploadUrl, key, bucket, expiresInSeconds });
+});
+
+// PUT /api/auth/avatar  { key } - called after the client's own PUT to the
+// presigned url above succeeds, to actually attach that image to the profile.
+const confirmAvatarUpload = asyncHandler(async (req, res) => {
+  const { key } = req.body;
+  const userId = req.user.userId;
+
+  // The key must be one this user was actually issued (avatars/<userId>/...) -
+  // without this a client could point their profile at any arbitrary S3 key.
+  if (!key.startsWith(`avatars/${userId}/`)) {
+    return sendError(res, HTTP_STATUS.FORBIDDEN, 'Invalid upload key');
+  }
+
+  const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!existing) {
+    return sendError(res, HTTP_STATUS.NOT_FOUND, 'User not found');
+  }
+
+  const previousAvatar = existing.avatar;
+  const [user] = await db.update(users).set(touch({ avatar: key })).where(eq(users.id, userId)).returning();
+
+  // Best-effort cleanup of the image being replaced - never block the
+  // response on it, a stray old object isn't worth failing this request.
+  if (previousAvatar && previousAvatar !== key) {
+    deleteObject({ key: previousAvatar }).catch(() => {});
+  }
+
+  const userData = await withAvatarUrl(sanitizeUser(user));
+  sendSuccess(res, 'Profile photo updated', { user: userData });
+});
+
+// DELETE /api/auth/avatar - removes the photo, reverting to the initials
+// fallback the frontend already renders when avatarUrl is null.
+const removeAvatar = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  const [existing] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!existing) {
+    return sendError(res, HTTP_STATUS.NOT_FOUND, 'User not found');
+  }
+
+  const [user] = await db.update(users).set(touch({ avatar: null })).where(eq(users.id, userId)).returning();
+
+  if (existing.avatar) {
+    deleteObject({ key: existing.avatar }).catch(() => {});
+  }
+
+  const userData = await withAvatarUrl(sanitizeUser(user));
+  sendSuccess(res, 'Profile photo removed', { user: userData });
+});
+
+// DELETE /api/auth/account  { confirmation: "DELETE" } - deactivates rather
+// than hard-deletes: isActive is the same flag authenticate()/login() already
+// gate on ("Account is deactivated"), so this immediately locks the account
+// out everywhere with no risky cascading deletes across org membership,
+// certificates, etc. Reversible by an admin later; not exposed via the API.
+const deleteAccount = asyncHandler(async (req, res) => {
+  const userId = req.user.userId;
+  await db.update(users).set(touch({ isActive: false })).where(eq(users.id, userId));
+  sendSuccess(res, 'Account deleted');
+});
+
 module.exports = {
   register,
   login,
   logout,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  presignAvatarUpload,
+  confirmAvatarUpload,
+  removeAvatar,
+  deleteAccount,
 };

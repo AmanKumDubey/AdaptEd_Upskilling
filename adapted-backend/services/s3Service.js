@@ -1,4 +1,4 @@
-const { S3Client, PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 // Use same AWS_REGION pattern as the codebase (SES helper also uses AWS_REGION)
@@ -70,7 +70,17 @@ const presignGetObject = async ({ key, expiresInSeconds = 300 }) => {
     return { downloadUrl, bucket, key, expiresInSeconds };
 };
 
+// Permanently removes an object from S3 - used when a user replaces or
+// removes their avatar, so old images don't pile up in the bucket unused.
+const deleteObject = async ({ key }) => {
+    const s3 = getS3Client();
+    const bucket = getBucket();
+
+    await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+};
+
 module.exports = {
     presignPutObject,
-    presignGetObject
+    presignGetObject,
+    deleteObject
 };

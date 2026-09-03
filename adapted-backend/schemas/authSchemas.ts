@@ -54,4 +54,30 @@ const passwordChangeSchema = z.object({
     ),
 });
 
-module.exports = { registerSchema, loginSchema, profileUpdateSchema, passwordChangeSchema };
+const presignAvatarSchema = z.object({
+  fileName: z.string().trim().min(1).max(255),
+  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif'], {
+    message: 'Only JPEG, PNG, WEBP, or GIF images are supported',
+  }),
+});
+
+const confirmAvatarSchema = z.object({
+  key: z.string().trim().min(1, 'Upload key is required'),
+});
+
+// Deletion is a "type DELETE to confirm" gate rather than a password
+// re-check - a password check would fail for social-login-only accounts
+// (no credential row to verify against), so this stays provider-agnostic.
+const deleteAccountSchema = z.object({
+  confirmation: z.literal('DELETE', { message: 'Type DELETE to confirm' }),
+});
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  profileUpdateSchema,
+  passwordChangeSchema,
+  presignAvatarSchema,
+  confirmAvatarSchema,
+  deleteAccountSchema,
+};

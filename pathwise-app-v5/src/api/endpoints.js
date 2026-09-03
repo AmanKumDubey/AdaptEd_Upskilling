@@ -73,6 +73,29 @@ export const auth = {
     api.post("/auth/password/verify-otp", { email, otp }, { requiresAuth: false }),
   resetPassword: (resetToken, newPassword) =>
     api.post("/auth/password/reset", { resetToken, newPassword }, { requiresAuth: false }),
+
+  // Avatar upload is 3 steps: 1) ask the backend for a presigned S3 PUT url,
+  // 2) PUT the actual file bytes straight to S3 (not through our backend),
+  // 3) tell the backend the upload succeeded so it attaches that key to the
+  // profile. -> { uploadUrl, key, bucket, expiresInSeconds }
+  presignAvatar: (fileName, contentType) =>
+    api.post("/auth/avatar/presign", { fileName, contentType }),
+
+  // Step 2 above - a raw PUT of the file itself to S3, not our backend, so it
+  // isn't wrapped in the { status, message, data } envelope and doesn't go
+  // through the api client at all.
+  uploadAvatarFile: (uploadUrl, file) =>
+    fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file }),
+
+  // PUT /api/auth/avatar  { key } -> { user }
+  confirmAvatar: (key) => api.put("/auth/avatar", { key }),
+
+  // DELETE /api/auth/avatar -> { user }
+  removeAvatar: () => api.delete("/auth/avatar"),
+
+  // DELETE /api/auth/account  { confirmation: "DELETE" } - deactivates the
+  // account (see adapted-backend/controllers/authController.js's deleteAccount).
+  deleteAccount: () => api.delete("/auth/account", { body: { confirmation: "DELETE" } }),
 };
 
 // ─── Onboarding ──────────────────────────────────────────────────────
