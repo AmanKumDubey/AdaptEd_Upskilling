@@ -260,6 +260,108 @@ function ChangePasswordForm() {
   );
 }
 
+// ─── Forgot password, from inside the profile (no current password needed -
+// the same OTP-by-email flow as the logged-out Login page, just pre-filled
+// with the account's own email since we already know it here). ───────
+function ForgotPasswordInline({ email }) {
+  const [step, setStep] = useState("intro"); // "intro" | "verify" | "reset" | "done"
+  const [otp, setOtp] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  const withBusy = async (fn) => {
+    setNotice(null);
+    setBusy(true);
+    try {
+      await fn();
+    } catch (err) {
+      setNotice({ tone: "error", text: err.message || "Something went wrong. Please try again." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSend = () => withBusy(async () => {
+    await auth.requestPasswordReset(email);
+    setStep("verify");
+  });
+
+  const handleVerify = (e) => {
+    e.preventDefault();
+    withBusy(async () => {
+      const data = await auth.verifyPasswordResetOtp(email, otp);
+      setResetToken(data.resetToken);
+      setStep("reset");
+    });
+  };
+
+  const handleReset = (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setNotice({ tone: "error", text: "Passwords don't match." });
+      return;
+    }
+    withBusy(async () => {
+      await auth.resetPassword(resetToken, newPassword);
+      setStep("done");
+    });
+  };
+
+  return (
+    <div>
+      {notice && <InlineNotice tone={notice.tone}>{notice.text}</InlineNotice>}
+
+      {step === "intro" && (
+        <>
+          <p style={{ fontSize: 12.5, color: T.muted, marginBottom: 14 }}>
+            We'll send a one-time code to <strong>{email}</strong>. Use it to set a new password without entering your current one.
+          </p>
+          <button type="button" disabled={busy} className="btn-primary" style={{ padding: "10px 20px", fontSize: 12.5, borderRadius: 12, display: "inline-flex", alignItems: "center", gap: 8 }} onClick={handleSend}>
+            {busy && <LoadingSpinner size={14} color="white" />}
+            Send reset code
+          </button>
+        </>
+      )}
+
+      {step === "verify" && (
+        <form onSubmit={handleVerify}>
+          <Field label={`6-digit code sent to ${email}`}>
+            <input style={{ ...fieldInputStyle, maxWidth: 180, textAlign: "center", letterSpacing: "0.3em", fontWeight: 600, marginBottom: 14 }}
+              inputMode="numeric" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              required maxLength={6} />
+          </Field>
+          <button type="submit" disabled={busy} className="btn-primary" style={{ padding: "10px 20px", fontSize: 12.5, borderRadius: 12, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {busy && <LoadingSpinner size={14} color="white" />}
+            Verify code
+          </button>
+        </form>
+      )}
+
+      {step === "reset" && (
+        <form onSubmit={handleReset}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 16 }}>
+            <Field label="New password">
+              <input type="password" style={fieldInputStyle} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} />
+            </Field>
+            <Field label="Confirm new password">
+              <input type="password" style={fieldInputStyle} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} />
+            </Field>
+          </div>
+          <button type="submit" disabled={busy} className="btn-primary" style={{ padding: "10px 20px", fontSize: 12.5, borderRadius: 12, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {busy && <LoadingSpinner size={14} color="white" />}
+            Update password
+          </button>
+        </form>
+      )}
+
+      {step === "done" && <InlineNotice tone="success">Password updated. You can use it next time you sign in.</InlineNotice>}
+    </div>
+  );
+}
+
 // ─── Danger zone: delete account ──────────────────────────────────────
 function DeleteAccountPanel() {
   const { logout } = useAuth();
@@ -281,41 +383,82 @@ function DeleteAccountPanel() {
   };
 
   return (
-    <GlassCard style={{ border: "1px solid rgba(244,63,94,0.2)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, flexWrap: "wrap" }}>
-        <div>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: T.rose, marginBottom: 4 }}>Delete account</h3>
-          <p style={{ fontSize: 12.5, color: T.muted, maxWidth: 420 }}>
-            This deactivates your account and immediately signs you out everywhere. This cannot be undone from the app.
-          </p>
-        </div>
-        {!confirming ? (
-          <button type="button" className="btn-ghost" style={{ color: T.rose, fontSize: 12.5, padding: "9px 16px", borderRadius: 10, whiteSpace: "nowrap" }} onClick={() => setConfirming(true)}>
-            Delete account
-          </button>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
-            <input
-              style={{ ...fieldInputStyle, width: 200 }}
-              placeholder='Type "DELETE" to confirm'
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-            />
-            <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "8px 14px" }} onClick={() => { setConfirming(false); setConfirmText(""); setError(""); }}>
-                Cancel
-              </button>
-              <button type="button" className="btn-primary" disabled={confirmText !== "DELETE" || busy}
-                style={{ fontSize: 12, padding: "8px 14px", background: T.rose, opacity: confirmText !== "DELETE" || busy ? 0.5 : 1 }}
-                onClick={handleDelete}>
-                {busy ? <LoadingSpinner size={14} color="white" /> : "Confirm delete"}
-              </button>
-            </div>
+    <div>
+      <p style={{ fontSize: 12.5, color: T.muted, marginBottom: 14, maxWidth: 460 }}>
+        This deactivates your account and immediately signs you out everywhere. This cannot be undone from the app.
+      </p>
+      {!confirming ? (
+        <button type="button" className="btn-ghost" style={{ color: T.rose, fontSize: 12.5, padding: "9px 16px", borderRadius: 10 }} onClick={() => setConfirming(true)}>
+          Delete account
+        </button>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+          <input
+            style={{ ...fieldInputStyle, width: 200 }}
+            placeholder='Type "DELETE" to confirm'
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+          />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" className="btn-primary" disabled={confirmText !== "DELETE" || busy}
+              style={{ fontSize: 12, padding: "8px 14px", background: T.rose, opacity: confirmText !== "DELETE" || busy ? 0.5 : 1 }}
+              onClick={handleDelete}>
+              {busy ? <LoadingSpinner size={14} color="white" /> : "Confirm delete"}
+            </button>
+            <button type="button" className="btn-ghost" style={{ fontSize: 12, padding: "8px 14px" }} onClick={() => { setConfirming(false); setConfirmText(""); setError(""); }}>
+              Cancel
+            </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       {error && <p style={{ fontSize: 12, color: T.rose, marginTop: 10 }}>{error}</p>}
-    </GlassCard>
+    </div>
+  );
+}
+
+// ─── Security actions bar: click a button, only that one action expands
+// below it - Change password / Forgot password / Delete account no longer
+// all sit open on the page at once. ────────────────────────────────────
+function SecurityActions({ email }) {
+  const [activePanel, setActivePanel] = useState(null); // null | "password" | "forgot" | "delete"
+
+  const actions = [
+    { key: "password", label: "Change password" },
+    { key: "forgot", label: "Forgot password?" },
+    { key: "delete", label: "Delete account", danger: true },
+  ];
+
+  const toggle = (key) => setActivePanel((current) => (current === key ? null : key));
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        {actions.map((action) => (
+          <button
+            key={action.key}
+            type="button"
+            className="btn-ghost"
+            style={{
+              padding: "9px 16px", fontSize: 12.5, borderRadius: 10, fontWeight: 600,
+              color: action.danger ? T.rose : T.navy,
+              background: activePanel === action.key ? (action.danger ? "rgba(244,63,94,0.12)" : T.bluePale) : undefined,
+              borderColor: activePanel === action.key ? (action.danger ? "rgba(244,63,94,0.3)" : "rgba(37,99,235,0.25)") : undefined,
+            }}
+            onClick={() => toggle(action.key)}
+          >
+            {action.label}
+          </button>
+        ))}
+      </div>
+
+      {activePanel && (
+        <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(148,163,184,0.12)" }}>
+          {activePanel === "password" && <ChangePasswordForm />}
+          {activePanel === "forgot" && <ForgotPasswordInline email={email} />}
+          {activePanel === "delete" && <DeleteAccountPanel />}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -438,13 +581,10 @@ function AccountSection() {
       </GlassCard>
 
       <GlassCard style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: T.navy, marginBottom: 14 }}>Change password</h3>
-        <ChangePasswordForm />
+        <h3 style={{ fontSize: 14, fontWeight: 700, color: T.navy, marginBottom: 4 }}>Security</h3>
+        <p style={{ fontSize: 12.5, color: T.muted, marginBottom: 16 }}>Change your password, reset it by email, or delete your account.</p>
+        <SecurityActions email={user?.email} />
       </GlassCard>
-
-      <div style={{ marginBottom: 20 }}>
-        <DeleteAccountPanel />
-      </div>
     </>
   );
 }
