@@ -30,6 +30,10 @@ const userCourseStatusEnum = pgEnum('enum_UserCourses_status', [
 const userRecommendationStatusEnum = pgEnum('enum_UserRecommendations_status', ['ready', 'generating', 'failed']);
 // Phase B5: org-scoped role, layered on top of (not replacing) userRoleEnum above.
 const orgMemberRoleEnum = pgEnum('enum_OrgMembers_role', ['owner', 'admin', 'hr', 'member']);
+// Phase B8: assessments - previously 100% client-side (localStorage only).
+const assessmentPersonaEnum = pgEnum('enum_AssessmentQuestions_personaId', ['tech', 'data', 'nontech', 'manager']);
+const assessmentSessionStatusEnum = pgEnum('enum_AssessmentSessions_status', ['in_progress', 'completed', 'abandoned']);
+const assessmentResultLevelEnum = pgEnum('enum_AssessmentResults_level', ['Beginner', 'Developing', 'Intermediate', 'Advanced']);
 
 const users = pgTable('Users', {
   id: uuid('id').primaryKey(),
@@ -258,6 +262,64 @@ const invitations = pgTable('Invitations', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
 
+// Phase B8: static seed data (see scripts/seedAssessmentQuestions.ts) - the
+// full 400-question bank previously bundled straight into the frontend
+// (pathwise-app-v5/src/features/assessment/questionBank.json).
+const assessmentQuestions = pgTable('AssessmentQuestions', {
+  id: uuid('id').primaryKey(),
+  personaId: assessmentPersonaEnum('personaId').notNull(),
+  domain: varchar('domain', { length: 120 }).notNull(),
+  bloom: varchar('bloom', { length: 40 }),
+  questionText: text('questionText').notNull(),
+  options: jsonb('options').notNull(),
+  correctIndex: integer('correctIndex').notNull(),
+  difficulty: integer('difficulty').notNull().default(0),
+  explanation: text('explanation'),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
+// One row per attempt. `questionIds` is the server-drawn random sample for
+// this attempt (see assessmentController.js's startSession) - the source of
+// truth for "which questions this attempt is made of", same role played by
+// the frontend's old localStorage session. `answers` is a jsonb map of
+// { [questionId]: selectedIndex }, filled in as the user progresses.
+const assessmentSessions = pgTable('AssessmentSessions', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('userId').notNull(),
+  personaId: assessmentPersonaEnum('personaId').notNull(),
+  questionIds: jsonb('questionIds').notNull(),
+  answers: jsonb('answers').notNull().default({}),
+  currentQuestion: integer('currentQuestion').notNull().default(0),
+  status: assessmentSessionStatusEnum('status').notNull().default('in_progress'),
+  startedAt: timestamp('startedAt', { withTimezone: true }).notNull(),
+  completedAt: timestamp('completedAt', { withTimezone: true }),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
+// One row per completed session - the scored summary (domainScores etc.) that
+// the Skills Wallet and Learning Path generator both read. The full per-
+// question review (with explanations) is recomputed on demand from the
+// linked session + AssessmentQuestions rather than duplicated here.
+const assessmentResults = pgTable('AssessmentResults', {
+  id: uuid('id').primaryKey(),
+  sessionId: uuid('sessionId').notNull().unique(),
+  userId: uuid('userId').notNull(),
+  personaId: assessmentPersonaEnum('personaId').notNull(),
+  score: integer('score').notNull(),
+  correctCount: integer('correctCount').notNull(),
+  total: integer('total').notNull(),
+  level: assessmentResultLevelEnum('level').notNull(),
+  domainScores: jsonb('domainScores').notNull(),
+  strengths: jsonb('strengths').notNull().default([]),
+  gaps: jsonb('gaps').notNull().default([]),
+  recommendedRoles: jsonb('recommendedRoles').notNull().default([]),
+  completedAt: timestamp('completedAt', { withTimezone: true }).notNull(),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
 module.exports = {
   users,
   passwordResets,
@@ -274,4 +336,7 @@ module.exports = {
   departments,
   orgMembers,
   invitations,
+  assessmentQuestions,
+  assessmentSessions,
+  assessmentResults,
 };

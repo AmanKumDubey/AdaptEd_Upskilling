@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAssessmentResult } from "../../state/PathwiseDataContext";
+import { authEnabled } from "./assessmentBackend";
 import "./assessment.css";
 
 function formatDate(value) {
@@ -41,7 +42,7 @@ export function AssessmentResultsPage() {
         </Link>
         <div className="assessment-header-copy">
           <span>Assessment report</span>
-          <small>Generated locally in your browser</small>
+          <small>{authEnabled ? "Saved to your account" : "Generated locally in your browser"}</small>
         </div>
         <Link className="assessment-result-dashboard-link" to="/dashboard">Dashboard</Link>
       </header>

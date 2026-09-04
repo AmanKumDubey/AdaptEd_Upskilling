@@ -1,17 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { PERSONAS } from "../../SkillsAssessment";
 import { useAssessmentResult } from "../../state/PathwiseDataContext";
 import {
-  calculateAssessmentResult,
-  createAssessmentSession,
-  getAssessmentQuestions,
   QUESTIONS_PER_ATTEMPT,
-} from "./assessmentEngine";
-import {
-  clearAssessmentSession,
-  loadAssessmentSession,
-  saveAssessmentSession,
-} from "./assessmentStorage";
+  authEnabled,
+  clearSession,
+  completeAssessment,
+  getQuestionsForSession,
+  loadResumableSession,
+  persistSession,
+  recordAnswer,
+  startSession,
+} from "./assessmentBackend";
 import "./assessment.css";
 
 function formatSavedTime(value) {
@@ -31,24 +31,33 @@ export function AssessmentExperience({
   forceFresh = false,
 }) {
   const [, setAssessmentResult] = useAssessmentResult();
-  const storedSession = useMemo(
-    () => (forceFresh ? null : loadAssessmentSession()),
-    [forceFresh],
-  );
-  const [personaId, setPersonaId] = useState(
-    storedSession?.personaId || preferredPersonaId,
-  );
-  const [session, setSession] = useState(storedSession);
+  const [storedSession, setStoredSession] = useState(null);
+  const [personaId, setPersonaId] = useState(preferredPersonaId);
+  const [session, setSession] = useState(null);
   const [screen, setScreen] = useState("intro");
   const [message, setMessage] = useState("");
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // In live mode this is a network call (GET .../sessions/active), so it can
+  // no longer be a synchronous useMemo the way the localStorage version was.
+  useEffect(() => {
+    if (forceFresh) return;
+    let cancelled = false;
+    loadResumableSession().then((found) => {
+      if (cancelled || !found) return;
+      setStoredSession(found);
+      setPersonaId(found.personaId);
+    });
+    return () => { cancelled = true; };
+  }, [forceFresh]);
 
   const persona = PERSONAS[personaId];
   // Each session randomly samples its own 20 of the persona's 100 questions
-  // at creation time (createAssessmentSession) - questions is only real once
-  // a session exists; the intro screen (no session yet) shows the fixed
+  // at creation time (startSession) - questions is only real once a session
+  // exists; the intro screen (no session yet) shows the fixed
   // QUESTIONS_PER_ATTEMPT count instead, as a preview.
-  const questions = getAssessmentQuestions(personaId, session?.questionIds);
+  const questions = getQuestionsForSession(session);
   const currentIndex = session?.currentQuestion || 0;
   const currentQuestion = questions[currentIndex];
   const answers = session?.answers || {};
@@ -57,15 +66,10 @@ export function AssessmentExperience({
     ? Math.round((answeredCount / questions.length) * 100)
     : 0;
 
-  function persist(nextSession) {
-    const saved = saveAssessmentSession(nextSession);
-    setSession(saved);
-  }
-
-  function startNewAssessment() {
-    clearAssessmentSession();
-    const nextSession = createAssessmentSession(personaId);
-    persist(nextSession);
+  async function startNewAssessment() {
+    clearSession();
+    const nextSession = await startSession(personaId);
+    setSession(nextSession);
     setMessage("");
     setScreen("quiz");
   }
@@ -77,17 +81,14 @@ export function AssessmentExperience({
     setScreen("quiz");
   }
 
-  function selectAnswer(optionIndex) {
-    const nextSession = {
-      ...session,
-      answers: { ...answers, [currentQuestion.id]: optionIndex },
-    };
-    persist(nextSession);
+  async function selectAnswer(optionIndex) {
+    const nextSession = await recordAnswer(session, currentQuestion.id, optionIndex);
+    setSession(nextSession);
     setMessage("");
   }
 
   function moveTo(questionIndex) {
-    persist({ ...session, currentQuestion: questionIndex });
+    setSession(persistSession({ ...session, currentQuestion: questionIndex }));
     setMessage("");
     setScreen("quiz");
   }
@@ -110,7 +111,7 @@ export function AssessmentExperience({
       (question) => answers[question.id] === undefined,
     );
     if (firstMissingIndex >= 0) {
-      persist({ ...session, currentQuestion: firstMissingIndex });
+      setSession(persistSession({ ...session, currentQuestion: firstMissingIndex }));
       setScreen("quiz");
       setMessage(`Question ${firstMissingIndex + 1} still needs an answer.`);
       return;
@@ -118,11 +119,19 @@ export function AssessmentExperience({
     setShowSubmitConfirm(true);
   }
 
-  function submitAssessment() {
-    const result = setAssessmentResult(calculateAssessmentResult(session));
-    clearAssessmentSession();
-    setShowSubmitConfirm(false);
-    onComplete(result);
+  async function submitAssessment() {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      const result = await completeAssessment(session);
+      setAssessmentResult(result);
+      clearSession();
+      setShowSubmitConfirm(false);
+      onComplete(result);
+    } catch {
+      setMessage("Couldn't submit your assessment. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -134,7 +143,7 @@ export function AssessmentExperience({
         </button>
         <div className="assessment-header-copy">
           <span>Skills Assessment</span>
-          <small>Frontend demo · saved in this browser</small>
+          <small>{authEnabled ? "Progress is saved to your account" : "Frontend demo · saved in this browser"}</small>
         </div>
         <button type="button" className="assessment-exit" onClick={onExit}>
           Save & exit
@@ -146,8 +155,9 @@ export function AssessmentExperience({
           <div className="assessment-eyebrow">Phase 4 · Skills Assessment</div>
           <h1>Find your current AI skill level</h1>
           <p className="assessment-lead">
-            Choose the track closest to your goal. Your answers are scored locally
-            and no information is sent to a server.
+            Choose the track closest to your goal. {authEnabled
+              ? "The correct answers are only revealed once you submit."
+              : "Your answers are scored locally and no information is sent to a server."}
           </p>
 
           {storedSession && !forceFresh && (
@@ -319,13 +329,13 @@ export function AssessmentExperience({
           <section className="assessment-modal" role="dialog" aria-modal="true" aria-labelledby="submit-title">
             <span className="assessment-modal-icon">✓</span>
             <h2 id="submit-title">Ready to see your result?</h2>
-            <p>After submitting, this attempt is locked and your local result report is generated.</p>
+            <p>After submitting, this attempt is locked and your result report is generated.</p>
             <div>
-              <button type="button" className="assessment-secondary" onClick={() => setShowSubmitConfirm(false)}>
+              <button type="button" className="assessment-secondary" disabled={submitting} onClick={() => setShowSubmitConfirm(false)}>
                 Keep reviewing
               </button>
-              <button type="button" className="assessment-primary" onClick={submitAssessment}>
-                Confirm & submit
+              <button type="button" className="assessment-primary" disabled={submitting} onClick={submitAssessment}>
+                {submitting ? "Submitting…" : "Confirm & submit"}
               </button>
             </div>
           </section>

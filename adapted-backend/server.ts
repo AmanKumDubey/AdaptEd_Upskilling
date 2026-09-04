@@ -26,6 +26,7 @@ const certificateRoutes = require('./routes/certificateRoutes');
 const recommendationRoutes = require('./routes/recommendationRoutes');
 const organizationRoutes = require('./routes/organizationRoutes');
 const invitationRoutes = require('./routes/invitationRoutes');
+const assessmentRoutes = require('./routes/assessmentRoutes');
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -70,6 +71,9 @@ app.use('/api', courseRoutes);
 
 // Certificate Routes
 app.use('/api/me', certificateRoutes);
+
+// Assessments (Phase B8 - previously 100% client-side/localStorage)
+app.use('/api/me/assessment', assessmentRoutes);
 
 // Recommendation Routes
 app.use('/api/me', recommendationRoutes);

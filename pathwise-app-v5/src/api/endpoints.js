@@ -214,10 +214,40 @@ export const invitations = {
   accept: (token) => api.post("/invitations/accept", { token }),
 };
 
+// ─── Assessments (Phase B8) ────────────────────────────────────────────
+// Draws a fresh random 20-question sample server-side per attempt - the
+// answer key never reaches the client until completeSession() is called.
+// See src/features/assessment/assessmentBackend.js for how this is bridged
+// into the existing (still-supported, demo-mode) local/localStorage engine.
+export const assessments = {
+  // POST /api/me/assessment/sessions  { personaId } -> { session }
+  startSession: (personaId) => api.post("/me/assessment/sessions", { personaId }),
+
+  // GET /api/me/assessment/sessions/active -> { session: {...} | null }
+  getActiveSession: () => api.get("/me/assessment/sessions/active"),
+
+  // PUT /api/me/assessment/sessions/:sessionId/answer  { questionId, selectedIndex }
+  answerQuestion: (sessionId, questionId, selectedIndex) =>
+    api.put(`/me/assessment/sessions/${sessionId}/answer`, { questionId, selectedIndex }),
+
+  // POST /api/me/assessment/sessions/:sessionId/complete -> { result }
+  completeSession: (sessionId) => api.post(`/me/assessment/sessions/${sessionId}/complete`),
+
+  // GET /api/me/assessment/results -> { results: [...] } (history, no per-question review)
+  listResults: () => api.get("/me/assessment/results"),
+
+  // GET /api/me/assessment/results/latest -> { result: {...} | null }
+  getLatestResult: () => api.get("/me/assessment/results/latest"),
+
+  // GET /api/me/assessment/results/:resultId -> { result } (full per-question review)
+  getResult: (resultId) => api.get(`/me/assessment/results/${resultId}`),
+};
+
 // ─────────────────────────────────────────────────────────────────────
 // NOT implemented on the backend yet - calling these will 404. Learning
-// path, Skills Wallet, Assessments, and the Employer dashboard/team/reports
-// still run entirely on the frontend's local mock data (see src/features/
-// and src/state/PathwiseDataContext.jsx). Wiring them up is separate,
-// later backend work - not part of B1-B6.
+// path and Skills Wallet still run entirely on the frontend's local mock
+// data (see src/features/ and src/state/PathwiseDataContext.jsx); the
+// Employer dashboard/team/reports too. Assessments (above) is the first of
+// these to get a real backend - Skills Wallet and Learning Path are next,
+// since both derive from assessment results.
 // ─────────────────────────────────────────────────────────────────────
