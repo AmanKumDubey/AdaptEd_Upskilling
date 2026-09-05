@@ -12,6 +12,14 @@ export function loadLearningPath() {
 }
 
 export function saveLearningPath(path) {
+  // A falsy `path` means "clear it" (e.g. the live backend has no path for
+  // whichever account just logged in) - {...null, updatedAt} would otherwise
+  // silently produce a truthy {updatedAt} garbage object, which every `if
+  // (!path)` check in the UI would then treat as "a path exists".
+  if (!path) {
+    clearLearningPath();
+    return null;
+  }
   const nextPath = { ...path, updatedAt: new Date().toISOString() };
   if (typeof window === "undefined") return nextPath;
   try {

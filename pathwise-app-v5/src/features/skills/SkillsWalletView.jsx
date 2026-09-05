@@ -4,10 +4,27 @@ import { Badge, GlassCard, ProgressRing } from "../../components/UIKit";
 import { T } from "../../theme";
 import { useProfile, useAssessmentResult, useCourseProgress } from "../../state/PathwiseDataContext";
 import { getCertificates } from "../courses/courseStorage";
+import { useCertificates } from "../../hooks";
 import { useSkillsWallet } from "./skillsEngine";
+
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 
 const LEVEL_COLOR = (level) => (level >= 80 ? T.green : level >= 60 ? T.blue : level >= 40 ? T.amber : T.rose);
 const LEVEL_LABEL = (level) => (level >= 80 ? "Expert" : level >= 60 ? "Advanced" : level >= 40 ? "Intermediate" : "Beginner");
+
+// Real certificates (uploaded via the actual course-completion flow, see
+// certificateController.js) have a different shape than the mock ones this
+// wallet used to show exclusively - normalized here so CertificatesSection
+// doesn't need to know which mode produced them.
+function toWalletCertificate(realCertificate) {
+  const platform = realCertificate.course?.platform || "coursera";
+  return {
+    id: realCertificate.id,
+    courseTitle: realCertificate.course?.title || "Course",
+    provider: platform.charAt(0).toUpperCase() + platform.slice(1),
+    issuedAt: realCertificate.uploadedAt,
+  };
+}
 
 // ─── Skills Wallet ───────────────────────────────────────────────────
 export function SkillsWalletView() {
@@ -17,7 +34,15 @@ export function SkillsWalletView() {
   const [shared, setShared] = useState(false);
 
   const wallet = useSkillsWallet();
-  const certificates = useMemo(() => getCertificates(courseProgress), [courseProgress]);
+  // Always called (not conditionally) - authEnabled is a fixed build-time
+  // value, so hook-call order never actually varies between renders.
+  const realCertificates = useCertificates();
+  const certificates = useMemo(
+    () => (authEnabled
+      ? (realCertificates.data || []).map(toWalletCertificate)
+      : getCertificates(courseProgress)),
+    [realCertificates.data, courseProgress],
+  );
 
   async function shareWallet() {
     const summary = [

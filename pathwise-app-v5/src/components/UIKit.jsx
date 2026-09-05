@@ -1,6 +1,6 @@
 import { T } from "../theme";
 
-export function GlassCard({ children, style, hover = true, className = "" }) {
+export function GlassCard({ children, style, hover = true, className = "", onClick }) {
   return (
     <div
       className={`glass-card ${hover ? "glass-hover" : ""} ${className}`}
@@ -15,6 +15,7 @@ export function GlassCard({ children, style, hover = true, className = "" }) {
         transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
         ...style,
       }}
+      onClick={onClick}
     >
       {children}
     </div>

@@ -27,6 +27,7 @@ const recommendationRoutes = require('./routes/recommendationRoutes');
 const organizationRoutes = require('./routes/organizationRoutes');
 const invitationRoutes = require('./routes/invitationRoutes');
 const assessmentRoutes = require('./routes/assessmentRoutes');
+const learningPathRoutes = require('./routes/learningPathRoutes');
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -74,6 +75,9 @@ app.use('/api/me', certificateRoutes);
 
 // Assessments (Phase B8 - previously 100% client-side/localStorage)
 app.use('/api/me/assessment', assessmentRoutes);
+
+// Learning Path (Phase B9 - previously 100% client-side/localStorage)
+app.use('/api/me/learning-path', learningPathRoutes);
 
 // Recommendation Routes
 app.use('/api/me', recommendationRoutes);

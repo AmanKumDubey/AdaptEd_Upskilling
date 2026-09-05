@@ -20,6 +20,7 @@ export function AppSidebar({
   collapsed,
   currentView,
   employerMode,
+  showEmployerToggle = true,
   onChangeView,
   onToggleCollapsed,
   onToggleMode,
@@ -33,7 +34,11 @@ export function AppSidebar({
         {!collapsed && <span className="brand-name">Pathwise</span>}
       </div>
 
-      {!collapsed && (
+      {/* Phase B10: only shown to users who actually hold an owner/admin/hr
+          role in some organization - this used to render for every logged-in
+          user regardless of real access (confirmed: employerMode was derived
+          purely from the URL, with no permission check anywhere upstream). */}
+      {!collapsed && showEmployerToggle && (
         <div className="mode-switcher" aria-label="Application mode">
           <span className={!employerMode ? "is-active" : ""}>Learner</span>
           <button

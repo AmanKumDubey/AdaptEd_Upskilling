@@ -105,9 +105,44 @@ export function getQuestionsForSession(session) {
 // below still writes the result to localStorage, but it silently reads back
 // as null afterwards (confirmed live: the Skills Wallet stayed empty right
 // after a real completed assessment, purely because of this missing field).
+function toLocalResultShape(serverResult) {
+  return { ...serverResult, version: 1, personaTitle: PERSONAS[serverResult.personaId]?.title };
+}
+
 export async function completeAssessment(session) {
   if (!authEnabled) return calculateAssessmentResult(session);
 
   const data = await assessmentApi.completeSession(session.id);
-  return { ...data.result, version: 1, personaTitle: PERSONAS[data.result.personaId]?.title };
+  return toLocalResultShape(data.result);
+}
+
+// For AssessmentResultsPage.jsx to reconcile against on mount - localStorage
+// isn't scoped per-account, so a *different* account's cached result (or one
+// with a review array, when the server's summary-only history entry has
+// none - see listResults() vs a single getResult()) can otherwise linger
+// and get shown to whoever is now logged in. Returns null in demo mode
+// (nothing to reconcile - the local cache already is the source of truth).
+export async function loadLatestResult() {
+  if (!authEnabled) return null;
+  const data = await assessmentApi.getLatestResult();
+  if (!data.result) return null;
+  const full = await assessmentApi.getResult(data.result.id);
+  return toLocalResultShape(full.result);
+}
+
+// For AssessmentResultsPage.jsx's /assessment/results/:resultId route - view
+// any past attempt, not just the most recent one. Live mode only; there's no
+// concept of "past attempts by id" in demo mode (only ever one cached result).
+export async function loadResultById(resultId) {
+  if (!authEnabled || !resultId) return null;
+  const data = await assessmentApi.getResult(resultId);
+  return data.result ? toLocalResultShape(data.result) : null;
+}
+
+// For AssessmentsView.jsx's history list. Live mode only - demo mode has no
+// server-side history, only ever the single cached "last attempt" result.
+export async function loadHistory() {
+  if (!authEnabled) return [];
+  const data = await assessmentApi.listResults();
+  return (data.results || []).map(toLocalResultShape);
 }

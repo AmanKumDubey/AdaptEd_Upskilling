@@ -21,6 +21,7 @@ const {
   createDepartment,
   listDepartments,
   listMembers,
+  getTeamProgress,
   updateMemberRole,
   removeMember,
 } = require('../controllers/organizationController');
@@ -55,6 +56,10 @@ router.get('/:orgId/departments', listDepartments);
 
 // GET /api/orgs/:orgId/members
 router.get('/:orgId/members', listMembers);
+
+// GET /api/orgs/:orgId/team-progress - exposes per-person performance data,
+// so unlike the plain roster above this is owner/admin/hr only.
+router.get('/:orgId/team-progress', requireOrgRole('owner', 'admin', 'hr'), getTeamProgress);
 
 // PUT /api/orgs/:orgId/members/:memberId/role
 router.put(

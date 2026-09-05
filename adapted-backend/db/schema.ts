@@ -320,6 +320,35 @@ const assessmentResults = pgTable('AssessmentResults', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
 
+// Phase B9: one row per user - a new generation replaces the old one. `stages`
+// is the frozen output of the ported generateLearningPath() (modules, order,
+// priority, difficulty, prerequisites); module *status* stays a pure
+// client-side derivation over that blob + completedModuleIds/currentModuleId
+// (see services/learningPathEngine.js's getModuleStatus, ported straight from
+// the frontend's own copy).
+const learningPaths = pgTable('LearningPaths', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('userId').notNull().unique(),
+  personaId: assessmentPersonaEnum('personaId').notNull(),
+  targetRole: varchar('targetRole', { length: 255 }).notNull(),
+  currentLevel: varchar('currentLevel', { length: 50 }).notNull(),
+  targetLevel: varchar('targetLevel', { length: 50 }).notNull(),
+  assessmentScore: integer('assessmentScore').notNull(),
+  hoursPerWeek: integer('hoursPerWeek').notNull(),
+  learningFormats: jsonb('learningFormats').notNull().default([]),
+  learningPace: varchar('learningPace', { length: 100 }),
+  priorityGaps: jsonb('priorityGaps').notNull().default([]),
+  estimatedWeeks: integer('estimatedWeeks').notNull(),
+  totalHours: integer('totalHours').notNull(),
+  stages: jsonb('stages').notNull(),
+  completedModuleIds: jsonb('completedModuleIds').notNull().default([]),
+  currentModuleId: varchar('currentModuleId', { length: 100 }),
+  sourceFingerprint: varchar('sourceFingerprint', { length: 1000 }),
+  generatedAt: timestamp('generatedAt', { withTimezone: true }).notNull(),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
 module.exports = {
   users,
   passwordResets,
@@ -339,4 +368,5 @@ module.exports = {
   assessmentQuestions,
   assessmentSessions,
   assessmentResults,
+  learningPaths,
 };

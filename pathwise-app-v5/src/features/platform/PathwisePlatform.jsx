@@ -3,6 +3,7 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { FrostBackground } from "../../components/layout/FrostBackground";
 import { AppSidebar } from "../../components/navigation/AppSidebar";
 import { useProfile } from "../../state/PathwiseDataContext";
+import { useEmployerAccess } from "../employer/employerAccess";
 import { T } from "../../theme";
 import "../../styles/platform.css";
 
@@ -30,6 +31,7 @@ export default function LearningPlatform() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const employerAccess = useEmployerAccess();
   const currentView = location.pathname.startsWith("/learning-path")
     ? "path"
     : ROUTE_VIEWS[location.pathname] ?? "";
@@ -47,6 +49,7 @@ export default function LearningPlatform() {
         collapsed={sidebarCollapsed}
         currentView={currentView}
         employerMode={employerMode}
+        showEmployerToggle={employerAccess.hasAccess}
         onChangeView={handleChangeView}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         onToggleMode={handleToggleMode}
@@ -63,6 +66,7 @@ export default function LearningPlatform() {
               setSelectedSkills,
               setSelectedGoal,
               navigateToView: handleChangeView,
+              employerAccess,
             }}
           />
         </div>

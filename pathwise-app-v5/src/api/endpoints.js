@@ -189,6 +189,11 @@ export const organizations = {
   // GET /api/orgs/:orgId/members
   listMembers: (orgId) => api.get(`/orgs/${orgId}/members`),
 
+  // GET /api/orgs/:orgId/team-progress (owner/admin/hr only) -> [{ ...member,
+  // latestAssessment, learningPath, assessmentsCompleted, coursesCompleted }]
+  // - real per-person performance data, unlike listMembers' plain roster above.
+  getTeamProgress: (orgId) => api.get(`/orgs/${orgId}/team-progress`),
+
   // PUT /api/orgs/:orgId/members/:memberId/role  { role } (owner/admin only)
   updateMemberRole: (orgId, memberId, role) =>
     api.put(`/orgs/${orgId}/members/${memberId}/role`, { role }),
@@ -243,11 +248,35 @@ export const assessments = {
   getResult: (resultId) => api.get(`/me/assessment/results/${resultId}`),
 };
 
+// ─── Learning Path (Phase B9) ──────────────────────────────────────────
+// The backend doesn't store the onboarding wizard's answers (that stays
+// local/frontend-driven for now) - generate() sends just the handful of
+// fields the roadmap actually needs; the assessment result it's built from
+// is read server-side (real AssessmentResults row, not client-trusted).
+// See src/features/learning-path/learningPathBackend.js for how this is
+// bridged into the existing (still-supported, demo-mode) local engine.
+export const learningPath = {
+  // GET /api/me/learning-path -> { path: {...} | null }
+  getPath: () => api.get("/me/learning-path"),
+
+  // POST /api/me/learning-path/generate  { targetRole?, hoursPerWeek?,
+  // learningFormats?, learningPace?, sourceFingerprint? } -> { path }
+  generate: (fields) => api.post("/me/learning-path/generate", fields),
+
+  // PUT /api/me/learning-path/modules/:moduleId/start -> { path }
+  startModule: (moduleId) => api.put(`/me/learning-path/modules/${moduleId}/start`),
+
+  // PUT /api/me/learning-path/modules/:moduleId/complete -> { path }
+  completeModule: (moduleId) => api.put(`/me/learning-path/modules/${moduleId}/complete`),
+
+  // POST /api/me/learning-path/reset -> { path }
+  resetProgress: () => api.post("/me/learning-path/reset"),
+};
+
 // ─────────────────────────────────────────────────────────────────────
-// NOT implemented on the backend yet - calling these will 404. Learning
-// path and Skills Wallet still run entirely on the frontend's local mock
-// data (see src/features/ and src/state/PathwiseDataContext.jsx); the
-// Employer dashboard/team/reports too. Assessments (above) is the first of
-// these to get a real backend - Skills Wallet and Learning Path are next,
-// since both derive from assessment results.
+// NOT implemented on the backend yet - calling these will 404. Skills
+// Wallet still runs entirely on the frontend's local mock data (see
+// src/features/ and src/state/PathwiseDataContext.jsx), as does the
+// Employer dashboard/team/reports. Assessments and Learning Path (above)
+// are the first two of these to get a real backend.
 // ─────────────────────────────────────────────────────────────────────

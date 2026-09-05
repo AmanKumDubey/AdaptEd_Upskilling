@@ -1,6 +1,6 @@
-const { eq, and, ne } = require('drizzle-orm');
+const { eq, and, ne, inArray, desc, sql } = require('drizzle-orm');
 const { db } = require('../db/client');
-const { organizations, departments, orgMembers, users } = require('../db/schema');
+const { organizations, departments, orgMembers, users, assessmentResults, learningPaths, userCourses } = require('../db/schema');
 const { newId, withTimestamps, touch } = require('../db/helpers');
 const { sendSuccess, sendError, asyncHandler, generateSlug } = require('../utilities/helpers/helper');
 const { HTTP_STATUS } = require('../utilities/constants');
@@ -122,6 +122,84 @@ const listMembers = asyncHandler(async (req, res) => {
   sendSuccess(res, 'Members retrieved successfully', rows);
 });
 
+// GET /api/orgs/:orgId/team-progress - each member's real assessment/learning
+// path/course-completion standing (Phase B10). Exposes per-person
+// performance data, so this is owner/admin/hr only (see organizationRoutes.ts) -
+// unlike listMembers, which is a plain roster and open to every member.
+const getTeamProgress = asyncHandler(async (req, res) => {
+  const { orgId } = req.params;
+
+  const members = await db
+    .select({
+      id: orgMembers.id,
+      role: orgMembers.role,
+      departmentId: orgMembers.departmentId,
+      userId: users.id,
+      username: users.username,
+      email: users.email,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    })
+    .from(orgMembers)
+    .innerJoin(users, eq(orgMembers.userId, users.id))
+    .where(eq(orgMembers.orgId, orgId));
+
+  const memberIds = members.map((m) => m.userId);
+  if (!memberIds.length) {
+    return sendSuccess(res, 'Team progress retrieved successfully', []);
+  }
+
+  // Three batch queries (not one per member) - fine for org sizes this
+  // feature is meant for; "latest per user" is reduced in JS below rather
+  // than with a DISTINCT ON, to stay portable and easy to follow.
+  const [allResults, allPaths, completedCourseCounts] = await Promise.all([
+    db.select().from(assessmentResults).where(inArray(assessmentResults.userId, memberIds)).orderBy(desc(assessmentResults.completedAt)),
+    db.select().from(learningPaths).where(inArray(learningPaths.userId, memberIds)),
+    db.select({ userId: userCourses.userId, count: sql`count(*)::int` }).from(userCourses)
+      .where(and(inArray(userCourses.userId, memberIds), eq(userCourses.status, 'completed')))
+      .groupBy(userCourses.userId),
+  ]);
+
+  const latestResultByUser = new Map();
+  const assessmentCountByUser = new Map();
+  for (const result of allResults) {
+    if (!latestResultByUser.has(result.userId)) latestResultByUser.set(result.userId, result);
+    assessmentCountByUser.set(result.userId, (assessmentCountByUser.get(result.userId) || 0) + 1);
+  }
+  const pathByUser = new Map(allPaths.map((p) => [p.userId, p]));
+  const courseCountByUser = new Map(completedCourseCounts.map((c) => [c.userId, Number(c.count)]));
+
+  const payload = members.map((member) => {
+    const latest = latestResultByUser.get(member.userId);
+    const path = pathByUser.get(member.userId);
+    const allModules = path ? (path.stages || []).flatMap((stage) => stage.modules) : [];
+    const completedCount = path ? (path.completedModuleIds || []).length : 0;
+
+    return {
+      ...member,
+      latestAssessment: latest ? {
+        personaId: latest.personaId,
+        score: latest.score,
+        level: latest.level,
+        domainScores: latest.domainScores,
+        completedAt: latest.completedAt,
+      } : null,
+      learningPath: path ? {
+        targetRole: path.targetRole,
+        currentLevel: path.currentLevel,
+        targetLevel: path.targetLevel,
+        completedModules: completedCount,
+        totalModules: allModules.length,
+        percentage: allModules.length ? Math.round((completedCount / allModules.length) * 100) : 0,
+      } : null,
+      assessmentsCompleted: assessmentCountByUser.get(member.userId) || 0,
+      coursesCompleted: courseCountByUser.get(member.userId) || 0,
+    };
+  });
+
+  sendSuccess(res, 'Team progress retrieved successfully', payload);
+});
+
 // PUT /api/orgs/:orgId/members/:memberId/role
 const updateMemberRole = asyncHandler(async (req, res) => {
   const { orgId, memberId } = req.params;
@@ -180,6 +258,7 @@ module.exports = {
   createDepartment,
   listDepartments,
   listMembers,
+  getTeamProgress,
   updateMemberRole,
   removeMember,
 };

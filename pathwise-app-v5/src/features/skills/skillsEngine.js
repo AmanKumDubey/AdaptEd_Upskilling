@@ -2,6 +2,9 @@ import { useMemo } from "react";
 import { getCourseById } from "../courses/courseData";
 import { formatRelativeTime } from "../../utils/time";
 import { useAssessmentResult, useCourseProgress, useProfile } from "../../state/PathwiseDataContext";
+import { useMyCoursesDashboard } from "../../hooks";
+
+const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 
 const CATEGORY_RULES = [
   { category: "Data & AI", keywords: ["python", "sql", "machine learning", "ml fundamentals", "advanced ml", "statistics", "deep learning", "tensorflow", "pytorch", "data", "neural", "nlp", "transformers", "llm", "genai", "rag", "model", "ai concepts", "prompt", "feature engineering"] },
@@ -29,9 +32,14 @@ function upsert(registry, name, patch) {
 
 /**
  * Builds the learner's real skill portfolio from three independent sources:
- * self-reported onboarding skills, assessed domain scores, and completed course skills.
+ * self-reported onboarding skills, assessed domain scores, and completed
+ * course skills. `completedCourses` is a plain array of course objects, each
+ * with a `.skills` array - in live mode these are real Courses rows (from
+ * GET /api/me/courses/dashboard's `.completed[].course`), in demo mode
+ * they're the mock catalog's entries (see useSkillsWallet below) - either
+ * way this function doesn't care where they came from.
  */
-export function buildSkillsWallet({ profile, result, courseProgress }) {
+export function buildSkillsWallet({ profile, result, completedCourses }) {
   const registry = new Map();
 
   (profile?.skills || []).forEach((skill) => {
@@ -48,9 +56,8 @@ export function buildSkillsWallet({ profile, result, courseProgress }) {
     });
   });
 
-  const completedCourses = (courseProgress?.completedIds || []).map(getCourseById).filter(Boolean);
-  completedCourses.forEach((course) => {
-    course.skills.forEach((skill) => {
+  (completedCourses || []).forEach((course) => {
+    (course?.skills || []).forEach((skill) => {
       const existing = registry.get(skill.toLowerCase());
       const courseCount = (existing?.courses || 0) + 1;
       upsert(registry, skill, {
@@ -72,19 +79,35 @@ export function buildSkillsWallet({ profile, result, courseProgress }) {
       avgProficiency: totalSkills
         ? Math.round(skills.reduce((sum, skill) => sum + skill.level, 0) / totalSkills)
         : 0,
-      coursesCompleted: courseProgress?.completedIds?.length || 0,
+      coursesCompleted: completedCourses?.length || 0,
     },
     isEmpty: totalSkills === 0,
   };
 }
 
-// Composes the shared profile/assessment/course-progress state into a memoized wallet.
+// Composes the shared profile/assessment/course state into a memoized wallet.
+// Course completions come from the real backend in live mode (the actual
+// course catalog/enrollment flow has been real since Phase B1-B3 - only this
+// wallet's calculation was still reading the old local mock catalog) and
+// from the local mock system in demo mode, unchanged.
 export function useSkillsWallet() {
   const [profile] = useProfile();
   const [result] = useAssessmentResult();
   const [courseProgress] = useCourseProgress();
+  // Always called (not conditionally) - authEnabled is a fixed build-time
+  // value, so hook-call order never actually varies between renders; matches
+  // how CoursesView.jsx/CourseDetailsPage.jsx already call this unconditionally.
+  const dashboard = useMyCoursesDashboard();
+
+  const completedCourses = useMemo(
+    () => (authEnabled
+      ? (dashboard.data?.completed || []).map((entry) => entry.course).filter(Boolean)
+      : (courseProgress?.completedIds || []).map(getCourseById).filter(Boolean)),
+    [dashboard.data, courseProgress],
+  );
+
   return useMemo(
-    () => buildSkillsWallet({ profile, result, courseProgress }),
-    [profile, result, courseProgress],
+    () => buildSkillsWallet({ profile, result, completedCourses }),
+    [profile, result, completedCourses],
   );
 }

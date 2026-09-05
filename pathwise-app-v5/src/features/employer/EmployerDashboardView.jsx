@@ -1,9 +1,117 @@
+import { useOutletContext } from "react-router-dom";
 import { GlassCard } from "../../components/UIKit";
 import { EMPLOYEES } from "../../data/mockData";
 import { T } from "../../theme";
+import { authEnabled } from "./employerAccess";
+import { averagePathProgress, averageScore, displayName, domainRollup, initials, topDomains, useTeamProgress } from "./employerData";
 
 // ─── Employer Dashboard ──────────────────────────────────────────────
+// Split into two full components (rather than branching mid-component) so
+// neither side's hooks can ever collide - authEnabled is fixed at build
+// time, so which one renders never changes across a session anyway.
 export function EmployerDashboardView() {
+  return authEnabled ? <RealEmployerDashboard /> : <DemoEmployerDashboard />;
+}
+
+function NoOrgAccess() {
+  return (
+    <GlassCard style={{ padding: 48, textAlign: "center", maxWidth: 480, margin: "60px auto" }}>
+      <div style={{ fontSize: 36, opacity: 0.3, marginBottom: 10 }}>⬡</div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: T.navy, marginBottom: 8 }}>No organization access</div>
+      <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.55 }}>
+        You need an owner, admin, or HR role in an organization to view team data.
+      </p>
+    </GlassCard>
+  );
+}
+
+// Phase B10: real team data (adapted-backend's GET /api/orgs/:orgId/team-progress)
+// for whichever organization this user manages - replaces the fabricated
+// EMPLOYEES mock roster and hand-typed stat cards. The old "Skills Gap
+// Analysis" section compared team scores against a "target" that doesn't
+// exist as real data anywhere (no target-setting feature) - replaced with a
+// team-wide domain average instead of inventing target numbers.
+function RealEmployerDashboard() {
+  const { employerAccess } = useOutletContext();
+  const { data: team, loading } = useTeamProgress(employerAccess.org?.id);
+
+  if (!employerAccess.hasAccess) return <NoOrgAccess />;
+
+  const avgScore = averageScore(team);
+  const avgPathProgress = averagePathProgress(team);
+  const totalCoursesCompleted = team.reduce((sum, m) => sum + m.coursesCompleted, 0);
+  const assessedCount = team.filter((m) => m.latestAssessment).length;
+  const weakestDomains = domainRollup(team, 4);
+  const leaderboard = [...team].sort((a, b) => (b.latestAssessment?.score ?? -1) - (a.latestAssessment?.score ?? -1));
+
+  const stats = [
+    { label: "Team Members", value: String(team.length), sub: employerAccess.org?.name || "", color: T.blue },
+    { label: "Avg. Skill Score", value: avgScore === null ? "—" : String(avgScore), sub: `${assessedCount}/${team.length} assessed`, color: T.green },
+    { label: "Courses Completed", value: String(totalCoursesCompleted), sub: "across the team", color: T.amber },
+    { label: "Avg. Path Progress", value: avgPathProgress === null ? "—" : `${avgPathProgress}%`, sub: "of generated roadmaps", color: T.violet },
+  ];
+
+  return (
+    <div>
+      <div className="fade-up" style={{ marginBottom: 32 }}>
+        <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Team Overview</h1>
+        <p style={{ color: T.muted, fontSize: 14.5 }}>Monitor your team's learning progress and skill development</p>
+      </div>
+
+      <div className="fade-up s1" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
+        {stats.map((s, i) => (
+          <GlassCard key={i} style={{ borderTop: `3px solid ${s.color}`, borderRadius: `0 0 ${T.radius}px ${T.radius}px` }}>
+            <div style={{ fontSize: 11.5, color: T.muted, marginBottom: 10 }}>{s.label}</div>
+            <div className="stat-num" style={{ fontSize: 34, color: T.navy }}>{s.value}</div>
+            <div style={{ fontSize: 11.5, color: T.muted, marginTop: 6, fontWeight: 600 }}>{s.sub}</div>
+          </GlassCard>
+        ))}
+      </div>
+
+      <GlassCard className="fade-up s2" style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Team Leaderboard</div>
+        {loading && <p style={{ fontSize: 13, color: T.muted }}>Loading…</p>}
+        {!loading && leaderboard.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No members yet.</p>}
+        {leaderboard.map((member, i) => (
+          <div key={member.userId} style={{ display: "flex", alignItems: "center", gap: 16, padding: "14px 0", borderBottom: i < leaderboard.length - 1 ? "1px solid rgba(148,163,184,0.08)" : "none" }}>
+            <div className="stat-num" style={{ fontSize: 14, color: T.faint, width: 24 }}>#{i + 1}</div>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(member)}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: T.navy }}>{displayName(member)}</div>
+              <div style={{ fontSize: 11.5, color: T.muted, textTransform: "capitalize" }}>{member.role}{member.learningPath?.targetRole ? ` · aiming for ${member.learningPath.targetRole}` : ""}</div>
+            </div>
+            <div style={{ display: "flex", gap: 5 }}>
+              {topDomains(member).map((d) => <span key={d} style={{ fontSize: 10.5, padding: "3px 8px", background: "rgba(148,163,184,0.06)", borderRadius: 5, color: T.muted }}>{d}</span>)}
+            </div>
+            <div style={{ textAlign: "right", minWidth: 56 }}>
+              <div className="stat-num" style={{ fontSize: 20, color: T.navy }}>{member.latestAssessment?.score ?? "—"}</div>
+              <div style={{ fontSize: 10.5, color: T.muted, fontWeight: 600 }}>{member.latestAssessment ? member.latestAssessment.level : "Not assessed"}</div>
+            </div>
+          </div>
+        ))}
+      </GlassCard>
+
+      <GlassCard className="fade-up s3">
+        <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Team Domain Performance</div>
+        {weakestDomains.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No completed assessments yet.</p>}
+        {weakestDomains.map((d) => (
+          <div key={d.domain} style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
+            <div style={{ width: 180, fontSize: 13, fontWeight: 600, color: T.slate }}>{d.domain}</div>
+            <div style={{ flex: 1, position: "relative", height: 8, background: "rgba(148,163,184,0.08)", borderRadius: 4 }}>
+              <div style={{ position: "absolute", height: "100%", width: `${d.avg}%`, background: d.avg < 40 ? T.rose : d.avg < 70 ? T.amber : T.green, borderRadius: 4, transition: "width 1s" }} />
+            </div>
+            <div style={{ width: 50, textAlign: "right" }}>
+              <span className="stat-num" style={{ fontSize: 12, color: d.avg < 40 ? T.rose : d.avg < 70 ? T.amber : T.green }}>{d.avg}%</span>
+            </div>
+          </div>
+        ))}
+        <div style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>Team average across everyone's most recent assessment, weakest domain first</div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function DemoEmployerDashboard() {
   return (
     <div>
       <div className="fade-up" style={{ marginBottom: 32 }}>

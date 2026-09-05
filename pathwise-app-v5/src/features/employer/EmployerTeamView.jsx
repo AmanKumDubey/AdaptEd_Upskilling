@@ -1,10 +1,115 @@
 import { useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { GlassCard } from "../../components/UIKit";
 import { EMPLOYEES } from "../../data/mockData";
 import { T } from "../../theme";
+import { authEnabled } from "./employerAccess";
+import { displayName, initials, useTeamProgress } from "./employerData";
 
 // ─── Employer Team ───────────────────────────────────────────────────
 export function EmployerTeamView() {
+  return authEnabled ? <RealEmployerTeamView /> : <DemoEmployerTeamView />;
+}
+
+function NoOrgAccess() {
+  return (
+    <GlassCard style={{ padding: 48, textAlign: "center", maxWidth: 480, margin: "60px auto" }}>
+      <div style={{ fontSize: 36, opacity: 0.3, marginBottom: 10 }}>⬡</div>
+      <div style={{ fontSize: 17, fontWeight: 700, color: T.navy, marginBottom: 8 }}>No organization access</div>
+      <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.55 }}>
+        You need an owner, admin, or HR role in an organization to view team data.
+      </p>
+    </GlassCard>
+  );
+}
+
+// Phase B10: the old "Skill Breakdown" section generated a fresh
+// Math.random() bar for six hardcoded skill names on every render - not
+// even backed by the mock EMPLOYEES data, let alone real. Replaced with the
+// selected member's actual most recent assessment domain scores.
+function RealEmployerTeamView() {
+  const { employerAccess } = useOutletContext();
+  const { data: team, loading } = useTeamProgress(employerAccess.org?.id);
+  const [selectedId, setSelectedId] = useState(null);
+
+  if (!employerAccess.hasAccess) return <NoOrgAccess />;
+
+  const selected = team.find((m) => m.userId === selectedId) || null;
+
+  return (
+    <div>
+      <div className="fade-up" style={{ marginBottom: 28 }}>
+        <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Team Skills</h1>
+        <p style={{ color: T.muted, fontSize: 14.5 }}>Individual assessment and learning progress</p>
+      </div>
+
+      {loading && <p style={{ fontSize: 13, color: T.muted }}>Loading…</p>}
+      {!loading && team.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No members yet.</p>}
+
+      {team.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: selected ? "300px 1fr" : "1fr", gap: 20 }}>
+          <div className="fade-up s1" style={{ display: "grid", gap: 10, alignContent: "start" }}>
+            {team.map((member) => (
+              <GlassCard key={member.userId} style={{ padding: 16, cursor: "pointer", border: selected?.userId === member.userId ? `1px solid ${T.blue}30` : undefined, background: selected?.userId === member.userId ? "rgba(37,99,235,0.04)" : undefined }}
+                onClick={() => setSelectedId(member.userId)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(member)}</div>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 700, color: T.navy }}>{displayName(member)}</div><div style={{ fontSize: 11.5, color: T.muted, textTransform: "capitalize" }}>{member.role}</div></div>
+                  <div className="stat-num" style={{ fontSize: 18, color: T.navy }}>{member.latestAssessment?.score ?? "—"}</div>
+                </div>
+              </GlassCard>
+            ))}
+          </div>
+
+          {selected && (
+            <div className="fade-up s2">
+              <GlassCard style={{ marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(selected)}</div>
+                  <div><div style={{ fontSize: 22, fontWeight: 700, color: T.navy, fontFamily: "'General Sans'" }}>{displayName(selected)}</div><div style={{ fontSize: 13.5, color: T.muted }}>{selected.email}</div></div>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+                  {[
+                    { v: selected.assessmentsCompleted, l: "Assessments", c: T.blue },
+                    { v: selected.coursesCompleted, l: "Courses done", c: T.green },
+                    { v: selected.learningPath ? `${selected.learningPath.percentage}%` : "—", l: "Path progress", c: T.amber },
+                  ].map((d, i) => (
+                    <div key={i} style={{ textAlign: "center", padding: 14, background: "rgba(255,255,255,0.5)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.6)" }}>
+                      <div className="stat-num" style={{ fontSize: 24, color: d.c }}>{d.v}</div>
+                      <div style={{ fontSize: 11, color: T.muted, marginTop: 4 }}>{d.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </GlassCard>
+              <GlassCard>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>
+                  {selected.latestAssessment ? "Domain Performance" : "No assessment yet"}
+                </div>
+                {!selected.latestAssessment && (
+                  <p style={{ fontSize: 13, color: T.muted }}>This person hasn't completed a skills assessment yet.</p>
+                )}
+                {(selected.latestAssessment?.domainScores || []).map((d) => {
+                  const col = d.score >= 70 ? T.green : d.score >= 40 ? T.amber : T.rose;
+                  return (
+                    <div key={d.domain} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                      <div style={{ width: 180, fontSize: 13, fontWeight: 500, color: T.slate }}>{d.domain}</div>
+                      <div style={{ flex: 1, height: 6, background: "rgba(148,163,184,0.08)", borderRadius: 3 }}>
+                        <div style={{ height: "100%", width: `${d.score}%`, background: col, borderRadius: 3, transition: "width 0.8s" }} />
+                      </div>
+                      <span className="stat-num" style={{ fontSize: 12, color: col, width: 36, textAlign: "right" }}>{d.score}%</span>
+                    </div>
+                  );
+                })}
+              </GlassCard>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DemoEmployerTeamView() {
   const [sel, setSel] = useState(null);
   return (
     <div>

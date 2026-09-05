@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useCourseProgress, useLearningPath } from "../../state/PathwiseDataContext";
 import {
-  completeLearningModule,
+  authEnabled,
+  completeModule as completeModuleRequest,
   getAllModules,
   getModuleById,
   getModuleStatus,
-  startLearningModule,
-} from "./learningPathEngine";
+  startModule as startModuleRequest,
+} from "./learningPathBackend";
 import { getCoursesForModule } from "../courses/courseData";
 import { getCourseStatus } from "../courses/courseStorage";
 import "./learningPath.css";
@@ -42,12 +43,14 @@ export function LearningModulePage() {
   const completedResources = recommendedCourses.filter((course) => getCourseStatus(courseProgress, course.id) === "completed").length;
 
   function startModule() {
-    setPath(startLearningModule(path, module.id));
+    startModuleRequest(path, module.id).then(setPath);
   }
 
   function completeModule() {
-    setPath(completeLearningModule(path, module.id));
-    setJustCompleted(true);
+    completeModuleRequest(path, module.id).then((next) => {
+      setPath(next);
+      setJustCompleted(true);
+    });
   }
 
   return (
@@ -74,7 +77,7 @@ export function LearningModulePage() {
 
       {justCompleted && (
         <section className="learning-complete-notice" role="status">
-          <span>✓</span><div><strong>Module completed</strong><p>Your progress is saved in this browser. The next module is now unlocked.</p></div>
+          <span>✓</span><div><strong>Module completed</strong><p>{authEnabled ? "Your progress is saved to your account." : "Your progress is saved in this browser."} The next module is now unlocked.</p></div>
           {nextModule && <button type="button" onClick={() => navigate(`/learning-path/module/${nextModule.id}`)}>Open next module →</button>}
         </section>
       )}
@@ -104,7 +107,7 @@ export function LearningModulePage() {
           {status === "current" && <button type="button" onClick={completeModule}>Mark module complete</button>}
           {status === "completed" && <button type="button" disabled>✓ Module completed</button>}
           {status === "locked" && <button type="button" disabled>Complete prerequisite first</button>}
-          <small>Progress is stored locally. No backend connection is used.</small>
+          <small>{authEnabled ? "Progress is saved to your account." : "Progress is stored locally. No backend connection is used."}</small>
         </aside>
       </div>
 

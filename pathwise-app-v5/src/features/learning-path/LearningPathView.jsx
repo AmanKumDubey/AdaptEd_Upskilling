@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAssessmentResult, useLearningPath } from "../../state/PathwiseDataContext";
+import { authEnabled, loadLatestResult } from "../assessment/assessmentBackend";
 import {
-  generateLearningPath,
+  generatePath,
   getLearningPathProgress,
   getModuleStatus,
   isLearningPathStale,
-  resetLearningPathProgress,
-  startLearningModule,
-} from "./learningPathEngine";
+  loadPath,
+  resetProgress,
+  startModule,
+} from "./learningPathBackend";
 import "./learningPath.css";
 
 const STATUS_LABELS = {
@@ -20,16 +22,47 @@ const STATUS_LABELS = {
 
 export function LearningPathView({ profile }) {
   const navigate = useNavigate();
-  const [assessmentResult] = useAssessmentResult();
+  const [assessmentResult, setAssessmentResult] = useAssessmentResult();
   const [path, setPath] = useLearningPath();
   const [activeStageId, setActiveStageId] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [generateError, setGenerateError] = useState("");
+  // In live mode, a path may already exist server-side even though this
+  // component's local `path` state hasn't fetched it yet (e.g. a fresh page
+  // load) - this gate stops the "generate a new one" effect below from
+  // firing before that fetch has had a chance to resolve.
+  const [checkedServer, setCheckedServer] = useState(false);
 
   useEffect(() => {
-    if (!path && profile?.onboardingCompleted && assessmentResult) {
-      setPath(generateLearningPath(profile, assessmentResult));
+    if (!authEnabled) {
+      setCheckedServer(true);
+      return;
     }
-  }, [assessmentResult, path, profile, setPath]);
+    let cancelled = false;
+    // Both reconciled together: localStorage isn't scoped per-account, so a
+    // path *or* an assessment result cached under a previous login must be
+    // cleared, not just left in place, when the server disagrees - otherwise
+    // this account could look like it has an assessment (or a path) it
+    // never actually completed, from someone else's earlier session on the
+    // same browser (confirmed live: this is exactly what happened testing
+    // B9 - a leftover test-account path kept showing up under later logins).
+    Promise.all([loadPath(), loadLatestResult()]).then(([fetchedPath, fetchedResult]) => {
+      if (cancelled) return;
+      setPath(fetchedPath || null);
+      if (fetchedResult?.id !== assessmentResult?.id) setAssessmentResult(fetchedResult || null);
+      setCheckedServer(true);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!checkedServer || path || !profile?.onboardingCompleted || !assessmentResult) return;
+    setGenerateError("");
+    generatePath(profile, assessmentResult).then(setPath).catch((error) => {
+      setGenerateError(error.message || "Couldn't build your roadmap. Please try again.");
+    });
+  }, [checkedServer, assessmentResult, path, profile, setPath]);
 
   const progress = useMemo(
     () => (path ? getLearningPathProgress(path) : { completed: 0, total: 0, percentage: 0 }),
@@ -37,6 +70,15 @@ export function LearningPathView({ profile }) {
   );
   const activeStage = path?.stages.find((stage) => stage.id === activeStageId) || path?.stages[0];
   const stale = Boolean(path && profile && assessmentResult && isLearningPathStale(path, profile, assessmentResult));
+
+  if (!checkedServer) {
+    return (
+      <div className="learning-loading" role="status">
+        <span />
+        <strong>Loading your learning path…</strong>
+      </div>
+    );
+  }
 
   if (!profile?.onboardingCompleted) {
     return (
@@ -63,6 +105,17 @@ export function LearningPathView({ profile }) {
   }
 
   if (!path) {
+    if (generateError) {
+      return (
+        <LearningPathEmptyState
+          eyebrow="Something went wrong"
+          title={generateError}
+          description="Please try again in a moment."
+          actionLabel="Retake assessment"
+          actionTo="/assessment"
+        />
+      );
+    }
     return (
       <div className="learning-loading" role="status">
         <span />
@@ -74,18 +127,20 @@ export function LearningPathView({ profile }) {
   function openModule(module) {
     const status = getModuleStatus(path, module);
     if (status === "locked") return;
-    if (status === "available") setPath(startLearningModule(path, module.id));
+    if (status === "available") startModule(path, module.id).then(setPath);
     navigate(`/learning-path/module/${module.id}`);
   }
 
-  function confirmChange() {
+  async function confirmChange() {
     if (confirmAction === "regenerate") {
-      const regenerated = setPath(generateLearningPath(profile, assessmentResult));
+      const regenerated = await generatePath(profile, assessmentResult);
+      setPath(regenerated);
       setActiveStageId(regenerated.stages[0]?.id || null);
     }
     if (confirmAction === "reset") {
-      setPath(resetLearningPathProgress(path));
-      setActiveStageId(path.stages[0]?.id || null);
+      const next = await resetProgress(path);
+      setPath(next);
+      setActiveStageId(next.stages[0]?.id || null);
     }
     setConfirmAction(null);
   }

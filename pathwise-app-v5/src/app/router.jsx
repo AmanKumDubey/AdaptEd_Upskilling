@@ -106,6 +106,7 @@ export function AppRouter() {
       <Route path="/onboarding" element={<OnboardingRoute />} />
       <Route path="/assessment" element={<AssessmentRoute />} />
       <Route path="/assessment/results" element={<AssessmentResultsPage />} />
+      <Route path="/assessment/results/:resultId" element={<AssessmentResultsPage />} />
       <Route path="/admin/learning-path-framework" element={<FrameworkRoute />} />
 
       <Route element={<PathwisePlatform />}>

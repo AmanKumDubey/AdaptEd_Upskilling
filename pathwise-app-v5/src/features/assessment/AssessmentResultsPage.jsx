@@ -1,6 +1,7 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import { useAssessmentResult } from "../../state/PathwiseDataContext";
-import { authEnabled } from "./assessmentBackend";
+import { authEnabled, loadLatestResult, loadResultById } from "./assessmentBackend";
 import "./assessment.css";
 
 function formatDate(value) {
@@ -14,7 +15,51 @@ function formatDate(value) {
 }
 
 export function AssessmentResultsPage() {
-  const [result] = useAssessmentResult();
+  const { resultId } = useParams();
+  const [latestResult, setLatestResult] = useAssessmentResult();
+  // Viewing a specific past attempt (from AssessmentsView.jsx's history
+  // list) is kept separate from the "latest" cache - overwriting that with
+  // an old attempt would wrongly make it look, to the Skills Wallet and
+  // Learning Path, like the most recent thing this account did.
+  const [viewedResult, setViewedResult] = useState(null);
+  const [loadingViewed, setLoadingViewed] = useState(Boolean(resultId));
+
+  useEffect(() => {
+    if (!authEnabled) return;
+    let cancelled = false;
+
+    if (resultId) {
+      setLoadingViewed(true);
+      loadResultById(resultId).then((found) => {
+        if (!cancelled) { setViewedResult(found); setLoadingViewed(false); }
+      });
+      return () => { cancelled = true; };
+    }
+
+    // localStorage isn't scoped per-account - reconcile against the real
+    // backend on mount so a previous login's cached result (or a stale one
+    // of this account's own, from before a retake) can't linger on screen
+    // for whoever is now logged in.
+    loadLatestResult().then((latest) => {
+      if (!cancelled && latest?.id !== latestResult?.id) setLatestResult(latest);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resultId]);
+
+  const result = resultId ? viewedResult : latestResult;
+
+  if (resultId && loadingViewed) {
+    return (
+      <main className="assessment-shell assessment-empty-result">
+        <section>
+          <span className="assessment-result-icon">◎</span>
+          <div className="assessment-eyebrow">Assessment results</div>
+          <h1>Loading…</h1>
+        </section>
+      </main>
+    );
+  }
 
   if (!result) {
     return (
@@ -22,8 +67,8 @@ export function AssessmentResultsPage() {
         <section>
           <span className="assessment-result-icon">◎</span>
           <div className="assessment-eyebrow">Assessment results</div>
-          <h1>No result yet</h1>
-          <p>Complete a frontend assessment to generate your skill report.</p>
+          <h1>{resultId ? "Result not found" : "No result yet"}</h1>
+          <p>{resultId ? "That attempt couldn't be found." : "Complete a frontend assessment to generate your skill report."}</p>
           <div>
             <Link className="assessment-link-primary" to="/assessment">Start assessment</Link>
             <Link className="assessment-link-secondary" to="/dashboard">Back to dashboard</Link>
