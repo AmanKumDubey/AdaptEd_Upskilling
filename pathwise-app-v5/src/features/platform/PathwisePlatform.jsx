@@ -50,6 +50,9 @@ export default function LearningPlatform() {
         currentView={currentView}
         employerMode={employerMode}
         showEmployerToggle={employerAccess.hasAccess}
+        elevatedOrgs={employerAccess.elevatedOrgs}
+        activeOrgId={employerAccess.org?.id}
+        onSelectOrg={employerAccess.selectOrg}
         onChangeView={handleChangeView}
         onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         onToggleMode={handleToggleMode}

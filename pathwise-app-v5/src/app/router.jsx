@@ -5,12 +5,14 @@ import { AssessmentResultsPage } from "../features/assessment/AssessmentResultsP
 import { AssessmentsView } from "../features/assessment/AssessmentsView";
 import { inferPersonaId } from "../features/assessment/assessmentEngine";
 import { AcceptInvitationPage } from "../pages/AcceptInvitationPage";
+import { LoadingState } from "../components/LoadingAndError";
 import { CoursesView } from "../features/courses/CoursesView";
 import { CourseDetailsPage } from "../features/courses/CourseDetailsPage";
 import { DashboardView } from "../features/dashboard/DashboardView";
 import { EmployerAssessmentsView } from "../features/employer/EmployerAssessmentsView";
 import { EmployerDashboardView } from "../features/employer/EmployerDashboardView";
 import { EmployerTeamView } from "../features/employer/EmployerTeamView";
+import { useEmployerAccess } from "../features/employer/employerAccess";
 import { LearningModulePage } from "../features/learning-path/LearningModulePage";
 import { LearningPathView } from "../features/learning-path/LearningPathView";
 import { OnboardingFlow } from "../features/onboarding/OnboardingFlow";
@@ -56,9 +58,24 @@ function OnboardingRoute() {
   return <OnboardingFlow onComplete={handleComplete} />;
 }
 
+// Phase B14: a returning owner/admin/hr lands directly on the Employer
+// Dashboard instead of the Learner Dashboard - `employerAccess.org` is only
+// ever truthy in real (authEnabled) mode for someone who actually manages an
+// organization, so demo mode and plain learners keep the exact same
+// behavior as before.
 function StartRoute() {
   const profile = loadOnboardingProfile();
-  return <Navigate to={profile?.onboardingCompleted ? "/dashboard" : "/onboarding"} replace />;
+  const employerAccess = useEmployerAccess();
+
+  if (!profile?.onboardingCompleted) {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  if (employerAccess.loading) {
+    return <LoadingState message="Loading Pathwise..." />;
+  }
+
+  return <Navigate to={employerAccess.org ? "/employer" : "/dashboard"} replace />;
 }
 
 function ProfileRoute() {

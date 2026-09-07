@@ -28,6 +28,7 @@ const organizationRoutes = require('./routes/organizationRoutes');
 const invitationRoutes = require('./routes/invitationRoutes');
 const assessmentRoutes = require('./routes/assessmentRoutes');
 const learningPathRoutes = require('./routes/learningPathRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -87,6 +88,9 @@ app.use('/api/orgs', organizationRoutes);
 
 // Invitation acceptance (not org-scoped - caller isn't a member yet)
 app.use('/api/invitations', invitationRoutes);
+
+// Notifications (Phase B13)
+app.use('/api/me/notifications', notificationRoutes);
 
 // Phase 1 stabilization: this endpoint now verifies PostgreSQL, not only the HTTP server.
 app.get('/api/health', healthCheck);

@@ -21,6 +21,7 @@ import {
   onboarding as onboardingApi,
   organizations as organizationsApi,
   invitations as invitationsApi,
+  notifications as notificationsApi,
 } from "../api/endpoints";
 
 // ─── Not implemented on the backend yet ──────────────────────────────
@@ -178,6 +179,43 @@ export function useUpdateMemberRole() {
   return useMutation(({ orgId, memberId, role }) => organizationsApi.updateMemberRole(orgId, memberId, role));
 }
 
+export function useRemoveMember() {
+  return useMutation(({ orgId, memberId }) => organizationsApi.removeMember(orgId, memberId));
+}
+
+export function useDepartments(orgId) {
+  return useApi(() => organizationsApi.listDepartments(orgId), {
+    initialData: [],
+    enabled: !!orgId,
+    deps: [orgId],
+  });
+}
+
+export function useCreateDepartment() {
+  return useMutation(({ orgId, name }) => organizationsApi.createDepartment(orgId, name));
+}
+
+export function useUpdateMemberDepartment() {
+  return useMutation(({ orgId, memberId, departmentId }) => organizationsApi.updateMemberDepartment(orgId, memberId, departmentId));
+}
+
 export function useAcceptInvitation() {
   return useMutation((token) => invitationsApi.accept(token));
+}
+
+// ─── Notifications ───────────────────────────────────────────────────
+export function useNotifications() {
+  return useApi(() => notificationsApi.list(), { initialData: [] });
+}
+
+export function useUnreadNotificationCount() {
+  return useApi(() => notificationsApi.unreadCount(), { initialData: { count: 0 } });
+}
+
+export function useMarkNotificationRead() {
+  return useMutation((notificationId) => notificationsApi.markRead(notificationId));
+}
+
+export function useMarkAllNotificationsRead() {
+  return useMutation(() => notificationsApi.markAllRead());
 }

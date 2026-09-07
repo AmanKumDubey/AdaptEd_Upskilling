@@ -198,6 +198,10 @@ export const organizations = {
   updateMemberRole: (orgId, memberId, role) =>
     api.put(`/orgs/${orgId}/members/${memberId}/role`, { role }),
 
+  // PUT /api/orgs/:orgId/members/:memberId/department  { departmentId } (owner/admin only, null unassigns)
+  updateMemberDepartment: (orgId, memberId, departmentId) =>
+    api.put(`/orgs/${orgId}/members/${memberId}/department`, { departmentId }),
+
   // DELETE /api/orgs/:orgId/members/:memberId (owner/admin only)
   removeMember: (orgId, memberId) => api.delete(`/orgs/${orgId}/members/${memberId}`),
 
@@ -217,6 +221,21 @@ export const organizations = {
 // POST /api/invitations/accept  { token } -> { membership }
 export const invitations = {
   accept: (token) => api.post("/invitations/accept", { token }),
+};
+
+// ─── Notifications (Phase B13) ────────────────────────────────────────
+export const notifications = {
+  // GET /api/me/notifications -> [{ id, type, title, message, data, readAt, createdAt }]
+  list: () => api.get("/me/notifications"),
+
+  // GET /api/me/notifications/unread-count -> { count }
+  unreadCount: () => api.get("/me/notifications/unread-count"),
+
+  // PUT /api/me/notifications/:notificationId/read -> { ...notification, readAt }
+  markRead: (notificationId) => api.put(`/me/notifications/${notificationId}/read`),
+
+  // PUT /api/me/notifications/read-all
+  markAllRead: () => api.put("/me/notifications/read-all"),
 };
 
 // ─── Assessments (Phase B8) ────────────────────────────────────────────

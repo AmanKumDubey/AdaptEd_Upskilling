@@ -9,6 +9,7 @@ const {
   createOrganizationSchema,
   createDepartmentSchema,
   updateMemberRoleSchema,
+  updateMemberDepartmentSchema,
   inviteMemberSchema,
   orgIdParamSchema,
   memberIdParamSchema,
@@ -23,6 +24,7 @@ const {
   listMembers,
   getTeamProgress,
   updateMemberRole,
+  updateMemberDepartment,
   removeMember,
 } = require('../controllers/organizationController');
 const {
@@ -68,6 +70,15 @@ router.put(
   validate(memberIdParamSchema, 'params'),
   validate(updateMemberRoleSchema),
   updateMemberRole,
+);
+
+// PUT /api/orgs/:orgId/members/:memberId/department
+router.put(
+  '/:orgId/members/:memberId/department',
+  requireOrgRole('owner', 'admin'),
+  validate(memberIdParamSchema, 'params'),
+  validate(updateMemberDepartmentSchema),
+  updateMemberDepartment,
 );
 
 // DELETE /api/orgs/:orgId/members/:memberId

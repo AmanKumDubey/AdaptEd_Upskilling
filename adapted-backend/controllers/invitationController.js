@@ -1,10 +1,13 @@
-const { eq, and, isNull, gt } = require('drizzle-orm');
+const { eq, and, isNull, gt, inArray, ne } = require('drizzle-orm');
 const { db } = require('../db/client');
 const { organizations, invitations, orgMembers, users } = require('../db/schema');
 const { newId, withTimestamps, touch } = require('../db/helpers');
 const { sendSuccess, sendError, asyncHandler, randomString } = require('../utilities/helpers/helper');
 const { sendEmail } = require('../utilities/helpers/email');
+const { createNotification } = require('../services/notificationService');
 const { HTTP_STATUS } = require('../utilities/constants');
+
+const NOTIFY_ROLES = ['owner', 'admin', 'hr'];
 
 const INVITATION_TTL_DAYS = 7;
 
@@ -132,6 +135,35 @@ const acceptInvitation = asyncHandler(async (req, res) => {
   }
 
   await db.update(invitations).set(touch({ acceptedAt: new Date() })).where(eq(invitations.id, invitation.id));
+
+  // Phase B13: only for a genuinely new join, not a no-op re-accept of an
+  // invitation for someone already a member (existingMembership truthy).
+  // Notifies every owner/admin/hr in the org except the person who just
+  // joined - best-effort, a failure here shouldn't fail the acceptance itself.
+  if (!existingMembership) {
+    try {
+      const [org] = await db.select({ name: organizations.name }).from(organizations).where(eq(organizations.id, invitation.orgId)).limit(1);
+      const recipients = await db
+        .select({ userId: orgMembers.userId })
+        .from(orgMembers)
+        .where(and(
+          eq(orgMembers.orgId, invitation.orgId),
+          inArray(orgMembers.role, NOTIFY_ROLES),
+          ne(orgMembers.userId, userId),
+        ));
+
+      const joinerName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+      await Promise.all(recipients.map((recipient) => createNotification({
+        userId: recipient.userId,
+        type: 'org_member_joined',
+        title: `${joinerName} joined ${org?.name || 'your organization'}`,
+        message: `${user.email} accepted their invitation and joined as ${invitation.role}.`,
+        data: { orgId: invitation.orgId, memberUserId: userId, role: invitation.role },
+      })));
+    } catch (error) {
+      console.error('[Notifications] failed to notify org on member join:', error.message);
+    }
+  }
 
   sendSuccess(res, 'Invitation accepted successfully', { membership });
 });

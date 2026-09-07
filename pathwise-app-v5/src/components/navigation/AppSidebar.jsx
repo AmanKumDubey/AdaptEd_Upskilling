@@ -1,4 +1,5 @@
 import { LogoutButton } from "../LogoutButton";
+import { NotificationBell } from "../notifications/NotificationBell";
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 
@@ -21,6 +22,9 @@ export function AppSidebar({
   currentView,
   employerMode,
   showEmployerToggle = true,
+  elevatedOrgs = [],
+  activeOrgId,
+  onSelectOrg,
   onChangeView,
   onToggleCollapsed,
   onToggleMode,
@@ -54,6 +58,22 @@ export function AppSidebar({
         </div>
       )}
 
+      {/* Phase B14: only shown when this user actually manages more than one
+          organization - the common single-org case stays exactly as before,
+          no extra chrome. */}
+      {!collapsed && employerMode && elevatedOrgs.length > 1 && (
+        <select
+          aria-label="Active organization"
+          value={activeOrgId || ""}
+          onChange={(event) => onSelectOrg(event.target.value)}
+          style={{ width: "100%", margin: "0 0 10px", padding: "9px 12px", borderRadius: 12, border: "1px solid rgba(148,163,184,0.25)", fontSize: 12.5, fontFamily: "inherit", background: "white", color: "#334155" }}
+        >
+          {elevatedOrgs.map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>{candidate.name} ({candidate.role})</option>
+          ))}
+        </select>
+      )}
+
       <nav className="app-navigation" aria-label="Primary navigation">
         {navItems.map((item) => (
           <button
@@ -70,6 +90,7 @@ export function AppSidebar({
       </nav>
 
       <nav className="app-navigation-footer" aria-label="Account">
+        <NotificationBell collapsed={collapsed} />
         <button
           type="button"
           className={`nav-item ${currentView === "account" ? "active" : ""}`}

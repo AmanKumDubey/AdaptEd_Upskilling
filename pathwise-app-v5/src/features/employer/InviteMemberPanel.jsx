@@ -10,9 +10,10 @@ const INVITE_ROLES = ["member", "hr", "admin"];
 // but nothing in the app ever called it - there was no way to add anyone to
 // an organization except by hand in the database. This is the missing
 // "send an invite" half; AcceptInvitationPage.jsx is the other half.
-export function InviteMemberPanel({ orgId }) {
+export function InviteMemberPanel({ orgId, departments = [] }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("member");
+  const [departmentId, setDepartmentId] = useState("");
   const { execute: invite, loading: inviting, error: inviteError } = useInviteMember();
   const { data: pending, loading: loadingInvites, refetch } = useOrgInvitations(orgId);
   const { execute: revoke, loading: revoking } = useRevokeInvitation();
@@ -21,7 +22,7 @@ export function InviteMemberPanel({ orgId }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (!email.trim() || !orgId) return;
-    await invite({ orgId, email: email.trim(), role });
+    await invite({ orgId, email: email.trim(), role, departmentId: departmentId || undefined });
     setEmail("");
     refetch();
   };
@@ -51,6 +52,12 @@ export function InviteMemberPanel({ orgId }) {
         <select value={role} onChange={(event) => setRole(event.target.value)} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(148,163,184,0.3)", fontSize: 13.5 }}>
           {INVITE_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
         </select>
+        {departments.length > 0 && (
+          <select value={departmentId} onChange={(event) => setDepartmentId(event.target.value)} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(148,163,184,0.3)", fontSize: 13.5 }}>
+            <option value="">No department</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        )}
         <button className="btn-primary" style={{ fontSize: 13 }} disabled={inviting || !email.trim()}>
           {inviting ? "Sending…" : "Send Invite"}
         </button>

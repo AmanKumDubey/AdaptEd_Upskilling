@@ -36,6 +36,11 @@ const updateMemberRoleSchema = z.object({
   role: orgRoleEnum,
 });
 
+// Phase B15: null unassigns the member from any department.
+const updateMemberDepartmentSchema = z.object({
+  departmentId: z.string().uuid('Invalid department id').nullable(),
+});
+
 const orgIdParamSchema = z.object({
   orgId: z.string().uuid('Invalid organization id'),
 });
@@ -61,6 +66,7 @@ module.exports = {
   inviteMemberSchema,
   acceptInvitationSchema,
   updateMemberRoleSchema,
+  updateMemberDepartmentSchema,
   orgIdParamSchema,
   departmentIdParamSchema,
   memberIdParamSchema,

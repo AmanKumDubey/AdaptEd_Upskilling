@@ -226,6 +226,27 @@ const updateMemberRole = asyncHandler(async (req, res) => {
   sendSuccess(res, 'Member role updated successfully', { member: updated });
 });
 
+// PUT /api/orgs/:orgId/members/:memberId/department - null unassigns
+const updateMemberDepartment = asyncHandler(async (req, res) => {
+  const { orgId, memberId } = req.params;
+  const { departmentId } = req.body;
+
+  const [member] = await db.select({ id: orgMembers.id }).from(orgMembers).where(and(eq(orgMembers.id, memberId), eq(orgMembers.orgId, orgId))).limit(1);
+  if (!member) {
+    return sendError(res, HTTP_STATUS.NOT_FOUND, 'Member not found in this organization');
+  }
+
+  if (departmentId) {
+    const [department] = await db.select({ id: departments.id }).from(departments).where(and(eq(departments.id, departmentId), eq(departments.orgId, orgId))).limit(1);
+    if (!department) {
+      return sendError(res, HTTP_STATUS.BAD_REQUEST, 'Department not found in this organization');
+    }
+  }
+
+  const [updated] = await db.update(orgMembers).set(touch({ departmentId: departmentId || null })).where(eq(orgMembers.id, memberId)).returning();
+  sendSuccess(res, 'Member department updated successfully', { member: updated });
+});
+
 // DELETE /api/orgs/:orgId/members/:memberId
 const removeMember = asyncHandler(async (req, res) => {
   const { orgId, memberId } = req.params;
@@ -260,5 +281,6 @@ module.exports = {
   listMembers,
   getTeamProgress,
   updateMemberRole,
+  updateMemberDepartment,
   removeMember,
 };

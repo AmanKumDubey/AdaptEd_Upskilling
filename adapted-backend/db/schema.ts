@@ -34,6 +34,9 @@ const orgMemberRoleEnum = pgEnum('enum_OrgMembers_role', ['owner', 'admin', 'hr'
 const assessmentPersonaEnum = pgEnum('enum_AssessmentQuestions_personaId', ['tech', 'data', 'nontech', 'manager']);
 const assessmentSessionStatusEnum = pgEnum('enum_AssessmentSessions_status', ['in_progress', 'completed', 'abandoned']);
 const assessmentResultLevelEnum = pgEnum('enum_AssessmentResults_level', ['Beginner', 'Developing', 'Intermediate', 'Advanced']);
+// Phase B13: notifications - starts with one event (a new member joining an
+// org an owner/admin/hr manages); more types get appended here, never renamed.
+const notificationTypeEnum = pgEnum('enum_Notifications_type', ['org_member_joined']);
 
 const users = pgTable('Users', {
   id: uuid('id').primaryKey(),
@@ -349,6 +352,21 @@ const learningPaths = pgTable('LearningPaths', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
 
+// Phase B13: notifications - one row per (recipient, event). `data` carries
+// whatever the notification's type needs to deep-link/render (e.g. orgId for
+// org_member_joined) without another join; readAt null means unread.
+const notifications = pgTable('Notifications', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('userId').notNull(),
+  type: notificationTypeEnum('type').notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: varchar('message', { length: 1024 }).notNull(),
+  data: jsonb('data').notNull().default({}),
+  readAt: timestamp('readAt', { withTimezone: true }),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
 module.exports = {
   users,
   passwordResets,
@@ -369,4 +387,5 @@ module.exports = {
   assessmentSessions,
   assessmentResults,
   learningPaths,
+  notifications,
 };

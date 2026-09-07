@@ -3,10 +3,15 @@ import { useOutletContext } from "react-router-dom";
 import { GlassCard } from "../../components/UIKit";
 import { EMPLOYEES } from "../../data/mockData";
 import { T } from "../../theme";
+import { useAuth } from "../../hooks/useAuth";
+import { useDepartments, useRemoveMember, useUpdateMemberDepartment, useUpdateMemberRole } from "../../hooks";
 import { authEnabled } from "./employerAccess";
 import { displayName, initials, useTeamProgress } from "./employerData";
 import { NoOrgAccess } from "./NoOrgAccess";
 import { InviteMemberPanel } from "./InviteMemberPanel";
+import { DepartmentsPanel } from "./DepartmentsPanel";
+
+const MEMBER_ROLES = ["member", "hr", "admin", "owner"];
 
 // ─── Employer Team ───────────────────────────────────────────────────
 export function EmployerTeamView() {
@@ -19,12 +24,44 @@ export function EmployerTeamView() {
 // selected member's actual most recent assessment domain scores.
 function RealEmployerTeamView() {
   const { employerAccess } = useOutletContext();
-  const { data: team, loading } = useTeamProgress(employerAccess.org?.id);
+  const { user } = useAuth();
+  const { data: team, loading, refetch } = useTeamProgress(employerAccess.org?.id);
+  const { data: departments, refetch: refetchDepartments } = useDepartments(employerAccess.org?.id);
+  const { execute: updateRole, loading: updatingRole, error: roleError } = useUpdateMemberRole();
+  const { execute: updateDepartment, loading: updatingDepartment, error: departmentError } = useUpdateMemberDepartment();
+  const { execute: removeMember, loading: removing, error: removeError } = useRemoveMember();
   const [selectedId, setSelectedId] = useState(null);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   if (!employerAccess.hasAccess) return <NoOrgAccess onCreated={employerAccess.refetch} />;
 
   const selected = team.find((m) => m.userId === selectedId) || null;
+  const canManage = ["owner", "admin"].includes(employerAccess.org?.role);
+  const isSelf = selected && user && selected.userId === user.id;
+
+  const selectMember = (userId) => {
+    setSelectedId(userId);
+    setConfirmingRemove(false);
+  };
+
+  const handleRoleChange = async (event) => {
+    await updateRole({ orgId: employerAccess.org.id, memberId: selected.id, role: event.target.value });
+    refetch();
+  };
+
+  const handleRemove = async () => {
+    await removeMember({ orgId: employerAccess.org.id, memberId: selected.id });
+    setSelectedId(null);
+    setConfirmingRemove(false);
+    refetch();
+  };
+
+  const handleDepartmentChange = async (event) => {
+    await updateDepartment({ orgId: employerAccess.org.id, memberId: selected.id, departmentId: event.target.value || null });
+    refetch();
+  };
+
+  const departmentName = (departmentId) => departments.find((d) => d.id === departmentId)?.name;
 
   return (
     <div>
@@ -33,7 +70,8 @@ function RealEmployerTeamView() {
         <p style={{ color: T.muted, fontSize: 14.5 }}>Individual assessment and learning progress</p>
       </div>
 
-      <InviteMemberPanel orgId={employerAccess.org?.id} />
+      <DepartmentsPanel orgId={employerAccess.org?.id} onChanged={refetchDepartments} />
+      <InviteMemberPanel orgId={employerAccess.org?.id} departments={departments} />
 
       {loading && <p style={{ fontSize: 13, color: T.muted }}>Loading…</p>}
       {!loading && team.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No members yet.</p>}
@@ -43,10 +81,10 @@ function RealEmployerTeamView() {
           <div className="fade-up s1" style={{ display: "grid", gap: 10, alignContent: "start" }}>
             {team.map((member) => (
               <GlassCard key={member.userId} style={{ padding: 16, cursor: "pointer", border: selected?.userId === member.userId ? `1px solid ${T.blue}30` : undefined, background: selected?.userId === member.userId ? "rgba(37,99,235,0.04)" : undefined }}
-                onClick={() => setSelectedId(member.userId)}>
+                onClick={() => selectMember(member.userId)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(member)}</div>
-                  <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 700, color: T.navy }}>{displayName(member)}</div><div style={{ fontSize: 11.5, color: T.muted, textTransform: "capitalize" }}>{member.role}</div></div>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 700, color: T.navy }}>{displayName(member)}</div><div style={{ fontSize: 11.5, color: T.muted, textTransform: "capitalize" }}>{member.role}{departmentName(member.departmentId) ? ` · ${departmentName(member.departmentId)}` : ""}</div></div>
                   <div className="stat-num" style={{ fontSize: 18, color: T.navy }}>{member.latestAssessment?.score ?? "—"}</div>
                 </div>
               </GlassCard>
@@ -73,6 +111,59 @@ function RealEmployerTeamView() {
                   ))}
                 </div>
               </GlassCard>
+
+              {canManage && !isSelf && (
+                <GlassCard style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14, fontFamily: "'General Sans'" }}>Manage member</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                    <label style={{ fontSize: 12.5, color: T.muted }}>Role</label>
+                    <select
+                      value={selected.role}
+                      onChange={handleRoleChange}
+                      disabled={updatingRole}
+                      style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(148,163,184,0.3)", fontSize: 13, fontFamily: "inherit" }}
+                    >
+                      {MEMBER_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+
+                    {departments.length > 0 && (
+                      <>
+                        <label style={{ fontSize: 12.5, color: T.muted }}>Department</label>
+                        <select
+                          value={selected.departmentId || ""}
+                          onChange={handleDepartmentChange}
+                          disabled={updatingDepartment}
+                          style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(148,163,184,0.3)", fontSize: 13, fontFamily: "inherit" }}
+                        >
+                          <option value="">No department</option>
+                          {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
+                      </>
+                    )}
+
+                    <div style={{ flex: 1 }} />
+
+                    {!confirmingRemove && (
+                      <button type="button" className="btn-ghost" style={{ fontSize: 12, color: T.rose }} onClick={() => setConfirmingRemove(true)}>
+                        Remove from organization
+                      </button>
+                    )}
+                    {confirmingRemove && (
+                      <>
+                        <span style={{ fontSize: 12.5, color: T.muted }}>Remove {displayName(selected)}?</span>
+                        <button type="button" className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setConfirmingRemove(false)} disabled={removing}>Cancel</button>
+                        <button type="button" className="btn-primary" style={{ fontSize: 12, background: T.rose }} onClick={handleRemove} disabled={removing}>
+                          {removing ? "Removing…" : "Confirm remove"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {(roleError || departmentError || removeError) && (
+                    <p style={{ fontSize: 12, color: T.rose, marginTop: 10 }}>{roleError || departmentError || removeError}</p>
+                  )}
+                </GlassCard>
+              )}
+
               <GlassCard>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>
                   {selected.latestAssessment ? "Domain Performance" : "No assessment yet"}
