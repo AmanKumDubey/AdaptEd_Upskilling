@@ -19,6 +19,14 @@ function AuthenticatedApp() {
     return <OAuthCallbackPage />;
   }
 
+  // An invited person often has no session yet - let the full app (and
+  // AcceptInvitationPage's own logged-out state) handle this path instead of
+  // bouncing straight to the login screen, which would lose the ?token=
+  // query string with no way back to it.
+  if (location.pathname === "/invitations/accept" && !loading) {
+    return <App />;
+  }
+
   if (loading) {
     return (
       <main className="app-loading-shell">

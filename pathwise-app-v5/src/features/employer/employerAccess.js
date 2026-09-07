@@ -28,14 +28,14 @@ export const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 // picking which one to manage isn't built yet (this is a real
 // simplification, not a bug - flagged here for whoever tackles it next).
 export function useEmployerAccess() {
-  const { data: organizations, loading } = useMyOrganizations();
+  const { data: organizations, loading, refetch } = useMyOrganizations();
 
   const org = useMemo(
     () => (organizations || []).find((candidate) => ELEVATED_ROLES.includes(candidate.role)) || null,
     [organizations],
   );
 
-  if (!authEnabled) return { loading: false, hasAccess: true, org: null };
+  if (!authEnabled) return { loading: false, hasAccess: true, org: null, refetch: () => {} };
 
-  return { loading, hasAccess: Boolean(org), org };
+  return { loading, hasAccess: Boolean(org), org, refetch };
 }

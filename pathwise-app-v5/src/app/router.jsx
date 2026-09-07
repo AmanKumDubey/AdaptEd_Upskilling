@@ -4,6 +4,7 @@ import { AssessmentExperience } from "../features/assessment/AssessmentExperienc
 import { AssessmentResultsPage } from "../features/assessment/AssessmentResultsPage";
 import { AssessmentsView } from "../features/assessment/AssessmentsView";
 import { inferPersonaId } from "../features/assessment/assessmentEngine";
+import { AcceptInvitationPage } from "../pages/AcceptInvitationPage";
 import { CoursesView } from "../features/courses/CoursesView";
 import { CourseDetailsPage } from "../features/courses/CourseDetailsPage";
 import { DashboardView } from "../features/dashboard/DashboardView";
@@ -108,6 +109,7 @@ export function AppRouter() {
       <Route path="/assessment/results" element={<AssessmentResultsPage />} />
       <Route path="/assessment/results/:resultId" element={<AssessmentResultsPage />} />
       <Route path="/admin/learning-path-framework" element={<FrameworkRoute />} />
+      <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
 
       <Route element={<PathwisePlatform />}>
         <Route path="/dashboard" element={<DashboardRoute />} />

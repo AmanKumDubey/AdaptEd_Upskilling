@@ -4,6 +4,7 @@ import { EMPLOYEES } from "../../data/mockData";
 import { T } from "../../theme";
 import { authEnabled } from "./employerAccess";
 import { averagePathProgress, averageScore, displayName, domainRollup, initials, topDomains, useTeamProgress } from "./employerData";
+import { NoOrgAccess } from "./NoOrgAccess";
 
 // ─── Employer Dashboard ──────────────────────────────────────────────
 // Split into two full components (rather than branching mid-component) so
@@ -11,18 +12,6 @@ import { averagePathProgress, averageScore, displayName, domainRollup, initials,
 // time, so which one renders never changes across a session anyway.
 export function EmployerDashboardView() {
   return authEnabled ? <RealEmployerDashboard /> : <DemoEmployerDashboard />;
-}
-
-function NoOrgAccess() {
-  return (
-    <GlassCard style={{ padding: 48, textAlign: "center", maxWidth: 480, margin: "60px auto" }}>
-      <div style={{ fontSize: 36, opacity: 0.3, marginBottom: 10 }}>⬡</div>
-      <div style={{ fontSize: 17, fontWeight: 700, color: T.navy, marginBottom: 8 }}>No organization access</div>
-      <p style={{ fontSize: 13.5, color: T.muted, lineHeight: 1.55 }}>
-        You need an owner, admin, or HR role in an organization to view team data.
-      </p>
-    </GlassCard>
-  );
 }
 
 // Phase B10: real team data (adapted-backend's GET /api/orgs/:orgId/team-progress)
@@ -35,7 +24,7 @@ function RealEmployerDashboard() {
   const { employerAccess } = useOutletContext();
   const { data: team, loading } = useTeamProgress(employerAccess.org?.id);
 
-  if (!employerAccess.hasAccess) return <NoOrgAccess />;
+  if (!employerAccess.hasAccess) return <NoOrgAccess onCreated={employerAccess.refetch} />;
 
   const avgScore = averageScore(team);
   const avgPathProgress = averagePathProgress(team);

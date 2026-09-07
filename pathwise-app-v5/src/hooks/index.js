@@ -20,6 +20,7 @@ import {
   recommendations as recommendationsApi,
   onboarding as onboardingApi,
   organizations as organizationsApi,
+  invitations as invitationsApi,
 } from "../api/endpoints";
 
 // ─── Not implemented on the backend yet ──────────────────────────────
@@ -154,4 +155,29 @@ export function useOrganization(orgId) {
 
 export function useCreateOrganization() {
   return useMutation(({ name, slug }) => organizationsApi.create(name, slug));
+}
+
+export function useOrgInvitations(orgId) {
+  return useApi(() => organizationsApi.listInvitations(orgId), {
+    initialData: [],
+    enabled: !!orgId,
+    deps: [orgId],
+  });
+}
+
+export function useInviteMember() {
+  return useMutation(({ orgId, email, role, departmentId }) =>
+    organizationsApi.invite(orgId, email, role, departmentId));
+}
+
+export function useRevokeInvitation() {
+  return useMutation(({ orgId, invitationId }) => organizationsApi.revokeInvitation(orgId, invitationId));
+}
+
+export function useUpdateMemberRole() {
+  return useMutation(({ orgId, memberId, role }) => organizationsApi.updateMemberRole(orgId, memberId, role));
+}
+
+export function useAcceptInvitation() {
+  return useMutation((token) => invitationsApi.accept(token));
 }
