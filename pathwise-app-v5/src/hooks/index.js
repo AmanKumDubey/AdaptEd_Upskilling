@@ -71,16 +71,37 @@ export function useCompleteOnboarding() {
 // changes recomputed a new object in the caller but never actually reached
 // the API call, silently freezing every request at whatever the page loaded
 // with first. That's why pagination and filtering both did nothing.
-export function useCourses(filters = {}) {
+export function useCourses(filters = {}, { enabled = true } = {}) {
   const query = useApi(() => coursesApi.list(filters), {
     initialData: { courses: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 0 } },
     deps: [JSON.stringify(filters)],
+    enabled,
   });
 
   return {
     ...query,
     courses: query.data?.courses || [],
     meta: query.data?.meta || { page: 1, pageSize: 20, total: 0, totalPages: 0 },
+  };
+}
+
+// Phase B26: distinct from useCourses() above (plain filtered listing,
+// GET /courses) - this hits GET /courses/search, a fuzzy/relevance-ranked
+// keyword search over the whole catalog with AI-personalized reranking when
+// the caller is logged in. `enabled` skips the request entirely with no
+// query typed, rather than searching for an empty string.
+export function useCourseSearch(query) {
+  const hasQuery = Boolean(query?.q && query.q.trim());
+  const result = useApi(() => coursesApi.search(query), {
+    initialData: { data: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 0, ai: { applied: false } } },
+    enabled: hasQuery,
+    deps: [JSON.stringify(query)],
+  });
+
+  return {
+    ...result,
+    courses: result.data?.data || [],
+    meta: result.data?.meta || { page: 1, pageSize: 20, total: 0, totalPages: 0, ai: { applied: false } },
   };
 }
 

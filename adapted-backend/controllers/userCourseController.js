@@ -9,6 +9,7 @@ const {
     asyncHandler
 } = require('../utilities/helpers/helper');
 const { searchUserCourses } = require('../services/userCourseSearchService');
+const { deleteObject } = require('../services/s3Service');
 const { HTTP_STATUS } = require('../utilities/constants');
 
 // Helper: turn a joined row into the same flat shape the API has always
@@ -298,6 +299,7 @@ const completeCourse = asyncHandler(async (req, res) => {
     }
 
     // Transaction: both DB writes succeed together or fail together
+    let staleS3Key = null;
     const updatedUserCourse = await db.transaction(async (tx) => {
         const [existing] = await tx.select().from(userCourses)
           .where(and(eq(userCourses.userId, userId), eq(userCourses.courseId, courseId)))
@@ -330,7 +332,17 @@ const completeCourse = asyncHandler(async (req, res) => {
 
         // Store the certificate metadata in DB (no validity checks)
         if (existingCert) {
-            // Replace the existing certificate reference with the newly uploaded S3 object
+            // Replace the existing certificate reference with the newly uploaded S3 object.
+            // Phase B24: the old object was never deleted from S3 on a
+            // re-upload - a guaranteed storage leak, one orphaned file per
+            // re-upload forever. Old key is captured here (only when it's
+            // actually changing) and deleted after the transaction commits -
+            // S3 isn't transactional with Postgres, so deleting inside the
+            // transaction could remove a still-referenced file if the
+            // transaction later rolled back.
+            if (existingCert.s3Key !== certificateKey) {
+                staleS3Key = existingCert.s3Key;
+            }
             await tx.update(certificates).set(touch({
                 s3Key: certificateKey,
                 fileName,
@@ -355,6 +367,18 @@ const completeCourse = asyncHandler(async (req, res) => {
 
         return userCourse;
     });
+
+    if (staleS3Key) {
+        try {
+            await deleteObject({ key: staleS3Key });
+        } catch (error) {
+            // Best-effort: the course is already completed with the new
+            // certificate recorded, so a delete failure here shouldn't fail
+            // the request - it just leaves one orphan for this cycle instead
+            // of fixing all of them retroactively.
+            console.error('[Certificates] failed to delete stale S3 object:', error.message);
+        }
+    }
 
     return sendSuccess(res, 'Course marked as completed', serializeUserCourse(updatedUserCourse, course));
 

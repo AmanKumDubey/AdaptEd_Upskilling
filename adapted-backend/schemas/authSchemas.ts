@@ -54,11 +54,20 @@ const passwordChangeSchema = z.object({
     ),
 });
 
+// Phase B25: the frontend already checks type+size before ever calling this
+// (ProfilePage.jsx's AvatarEditor) and matches these same limits, but that
+// was a UI-only check - nothing stopped a direct API call from requesting a
+// presigned URL for an arbitrarily huge file (same class of gap
+// certificateSchemas.ts had before its own fix).
+const AVATAR_MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB - matches ProfilePage.jsx's existing "up to 5MB" copy
+
 const presignAvatarSchema = z.object({
   fileName: z.string().trim().min(1).max(255),
   contentType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif'], {
     message: 'Only JPEG, PNG, WEBP, or GIF images are supported',
   }),
+  sizeBytes: z.coerce.number({ message: 'sizeBytes is required' }).int().positive()
+    .max(AVATAR_MAX_SIZE_BYTES, `Image is too large (max ${AVATAR_MAX_SIZE_BYTES / (1024 * 1024)}MB)`),
 });
 
 const confirmAvatarSchema = z.object({

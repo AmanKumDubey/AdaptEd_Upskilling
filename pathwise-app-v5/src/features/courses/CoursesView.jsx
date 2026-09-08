@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useCourses, useMyCoursesDashboard, useToggleWishlist } from "../../hooks";
+import { useCourses, useCourseSearch, useMyCoursesDashboard, useToggleWishlist } from "../../hooks";
 import { COURSE_LEVELS, COURSE_PLATFORMS, getPlatformStyle } from "./courseDisplay";
 import { DataGuard } from "../../components/LoadingAndError";
 import { RecommendationsPanel } from "./RecommendationsPanel";
@@ -13,24 +13,45 @@ import "./courses.css";
 // real course marketplace has no equivalent for.
 export function CoursesView() {
   const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [level, setLevel] = useState("All");
   const [platform, setPlatform] = useState("All");
   const [page, setPage] = useState(1);
 
+  // Phase B26: a search term now hits GET /courses/search (fuzzy/relevance-
+  // ranked, AI-personalized when logged in) instead of the plain `title`
+  // filter on GET /courses - debounced so typing doesn't fire a request per
+  // keystroke.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 350);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+
+  const isSearching = Boolean(debouncedSearch);
+
   const filters = useMemo(() => {
     const f = { page, pageSize: 12 };
-    if (searchInput.trim()) f.title = searchInput.trim();
     if (level !== "All") f.level = level;
     if (platform !== "All") f.platform = platform;
     return f;
-  }, [searchInput, level, platform, page]);
+  }, [level, platform, page]);
 
-  const { courses, meta, loading, error, refetch } = useCourses(filters);
+  const searchParams = useMemo(() => {
+    const p = { q: debouncedSearch, page, pageSize: 12 };
+    if (level !== "All") p.level = level;
+    if (platform !== "All") p.platform = platform;
+    return p;
+  }, [debouncedSearch, level, platform, page]);
+
+  const listQuery = useCourses(filters, { enabled: !isSearching });
+  const searchQuery = useCourseSearch(searchParams);
+  const { courses, meta, loading, error, refetch } = isSearching ? searchQuery : listQuery;
+
   const dashboardQuery = useMyCoursesDashboard();
   const { execute: toggleWishlist } = useToggleWishlist();
 
   // Reset to page 1 whenever a filter (not the page itself) changes.
-  useEffect(() => setPage(1), [searchInput, level, platform]);
+  useEffect(() => setPage(1), [debouncedSearch, level, platform]);
 
   const wishlistIds = useMemo(
     () => new Set((dashboardQuery.data?.wishlist || []).map((uc) => uc.courseId)),
@@ -65,7 +86,9 @@ export function CoursesView() {
           <h1>Find the right course for your next skill</h1>
           <p>Real courses from Coursera, Udemy, and Skillshare.</p>
         </div>
-        <div className="courses-hero-stats"><span><b>{meta.total}</b> courses available</span></div>
+        {/* Always the whole-catalog count (listQuery), even while a search
+            is active and `meta` below is showing search-result counts instead. */}
+        <div className="courses-hero-stats"><span><b>{listQuery.meta.total}</b> courses available</span></div>
       </section>
 
       <RecommendationsPanel />
@@ -73,7 +96,7 @@ export function CoursesView() {
       <section className="courses-toolbar fade-up">
         <label className="courses-search">
           <span>⌕</span>
-          <input type="search" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search courses by title…" />
+          <input type="search" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} placeholder="Search courses (try a skill, role, or topic)…" />
         </label>
         <div className="courses-filter-row">
           <select aria-label="Filter by level" value={level} onChange={(e) => setLevel(e.target.value)}>
@@ -86,7 +109,10 @@ export function CoursesView() {
       </section>
 
       <div className="courses-results-heading">
-        <span>{meta.total} course{meta.total === 1 ? "" : "s"} found</span>
+        <span>
+          {meta.total} course{meta.total === 1 ? "" : "s"} found
+          {isSearching && meta.ai?.applied && " · ✨ personalized for you"}
+        </span>
         {(searchInput || level !== "All" || platform !== "All") && (
           <button type="button" onClick={clearFilters}>Clear filters</button>
         )}
@@ -138,6 +164,10 @@ export function CourseCard({ course, wishlisted, status, onToggleWishlist }) {
           <span>{course.level || "All levels"}</span>
           {course.certificationType && <span>{course.certificationType}</span>}
           {status !== "not_started" && <span className={`is-${status}`}>{status === "completed" ? "Completed" : "In progress"}</span>}
+          {/* Only present on search results (GET /courses/search) - the AI's
+              best-effort read of why this course matched, not shown for
+              plain catalog browsing where it's never computed. */}
+          {(course.aiTags || []).slice(0, 2).map((tag) => <span key={tag} className="is-ai-tag">✨ {tag}</span>)}
         </div>
         <h2>{course.title}</h2>
         <div className="course-card-details">

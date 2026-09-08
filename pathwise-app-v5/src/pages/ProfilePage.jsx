@@ -78,7 +78,7 @@ function AvatarEditor({ user, onChanged }) {
     setError("");
     setBusy(true);
     try {
-      const { uploadUrl, key } = await auth.presignAvatar(file.name, file.type);
+      const { uploadUrl, key } = await auth.presignAvatar(file.name, file.type, file.size);
       const uploadRes = await auth.uploadAvatarFile(uploadUrl, file);
       if (!uploadRes.ok) throw new Error("Upload to storage failed");
       await auth.confirmAvatar(key);

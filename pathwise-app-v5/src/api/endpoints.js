@@ -78,8 +78,8 @@ export const auth = {
   // 2) PUT the actual file bytes straight to S3 (not through our backend),
   // 3) tell the backend the upload succeeded so it attaches that key to the
   // profile. -> { uploadUrl, key, bucket, expiresInSeconds }
-  presignAvatar: (fileName, contentType) =>
-    api.post("/auth/avatar/presign", { fileName, contentType }),
+  presignAvatar: (fileName, contentType, sizeBytes) =>
+    api.post("/auth/avatar/presign", { fileName, contentType, sizeBytes }),
 
   // Step 2 above - a raw PUT of the file itself to S3, not our backend, so it
   // isn't wrapped in the { status, message, data } envelope and doesn't go
@@ -121,8 +121,11 @@ export const courses = {
   getById: (id) => api.get(`/courses/${id}`, null, { requiresAuth: false }),
 
   // GET /api/courses/search?q=&fields=&match=&sort=&platform=&level=&...
-  // public global search, personalized if a token is present
-  search: (query) => api.get("/courses/search", query, { requiresAuth: false }),
+  // Public (works logged out) but personalized/AI-reranked when a token is
+  // present - the backend's optionalAuth reads it if sent, so this must NOT
+  // force requiresAuth:false the way list()/getById() do (that would strip
+  // the token even for a logged-in user and silently disable personalization).
+  search: (query) => api.get("/courses/search", query),
 };
 
 // ─── My courses (wishlist / enroll / progress) ──────────────────────
