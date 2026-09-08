@@ -15,6 +15,7 @@ const {
   memberIdParamSchema,
   invitationIdParamSchema,
 } = require('../schemas/organizationSchemas');
+const { createAssignmentSchema, assignmentIdParamSchema } = require('../schemas/assessmentAssignmentSchemas');
 const {
   createOrganization,
   listMyOrganizations,
@@ -32,6 +33,11 @@ const {
   listInvitations,
   revokeInvitation,
 } = require('../controllers/invitationController');
+const {
+  createAssignment,
+  listOrgAssignments,
+  revokeAssignment,
+} = require('../controllers/assessmentAssignmentController');
 
 // All routes below require authentication
 router.use(authenticate);
@@ -106,6 +112,25 @@ router.delete(
   requireOrgRole('owner', 'admin', 'hr'),
   validate(invitationIdParamSchema, 'params'),
   revokeInvitation,
+);
+
+// POST /api/orgs/:orgId/assessment-assignments
+router.post(
+  '/:orgId/assessment-assignments',
+  requireOrgRole('owner', 'admin', 'hr'),
+  validate(createAssignmentSchema),
+  createAssignment,
+);
+
+// GET /api/orgs/:orgId/assessment-assignments
+router.get('/:orgId/assessment-assignments', requireOrgRole('owner', 'admin', 'hr'), listOrgAssignments);
+
+// DELETE /api/orgs/:orgId/assessment-assignments/:assignmentId
+router.delete(
+  '/:orgId/assessment-assignments/:assignmentId',
+  requireOrgRole('owner', 'admin', 'hr'),
+  validate(assignmentIdParamSchema, 'params'),
+  revokeAssignment,
 );
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { GlassCard } from "../../components/UIKit";
 import { EMPLOYEES } from "../../data/mockData";
@@ -32,6 +32,42 @@ function RealEmployerTeamView() {
   const { execute: removeMember, loading: removing, error: removeError } = useRemoveMember();
   const [selectedId, setSelectedId] = useState(null);
   const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const [departmentFilter, setDepartmentFilter] = useState("");
+
+  // Phase B19: groups the roster by department (with a "No department"
+  // bucket) so it reads like an org chart instead of a flat list once an org
+  // actually has departments; `departmentFilter` narrows to one at a time.
+  // With zero departments this collapses back to a single, header-less
+  // group - the exact flat list this view always rendered before. Kept
+  // above the `!hasAccess` early return below - like every other hook here -
+  // so the hook count never changes between renders (e.g. right after
+  // NoOrgAccess's create-org flow flips hasAccess from false to true).
+  const groupedTeam = useMemo(() => {
+    const filtered = departmentFilter
+      ? team.filter((member) => (departmentFilter === "__none__" ? !member.departmentId : member.departmentId === departmentFilter))
+      : team;
+
+    if (departments.length === 0) {
+      return [{ id: "__all__", name: null, members: filtered }];
+    }
+
+    const byDepartment = new Map();
+    filtered.forEach((member) => {
+      const key = member.departmentId || "__none__";
+      if (!byDepartment.has(key)) byDepartment.set(key, []);
+      byDepartment.get(key).push(member);
+    });
+
+    const groups = departments
+      .filter((department) => byDepartment.has(department.id))
+      .map((department) => ({ id: department.id, name: department.name, members: byDepartment.get(department.id) }));
+
+    if (byDepartment.has("__none__")) {
+      groups.push({ id: "__none__", name: "No department", members: byDepartment.get("__none__") });
+    }
+
+    return groups;
+  }, [team, departments, departmentFilter]);
 
   if (!employerAccess.hasAccess) return <NoOrgAccess onCreated={employerAccess.refetch} />;
 
@@ -79,15 +115,40 @@ function RealEmployerTeamView() {
       {team.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: selected ? "300px 1fr" : "1fr", gap: 20 }}>
           <div className="fade-up s1" style={{ display: "grid", gap: 10, alignContent: "start" }}>
-            {team.map((member) => (
-              <GlassCard key={member.userId} style={{ padding: 16, cursor: "pointer", border: selected?.userId === member.userId ? `1px solid ${T.blue}30` : undefined, background: selected?.userId === member.userId ? "rgba(37,99,235,0.04)" : undefined }}
-                onClick={() => selectMember(member.userId)}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(member)}</div>
-                  <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 700, color: T.navy }}>{displayName(member)}</div><div style={{ fontSize: 11.5, color: T.muted, textTransform: "capitalize" }}>{member.role}{departmentName(member.departmentId) ? ` · ${departmentName(member.departmentId)}` : ""}</div></div>
-                  <div className="stat-num" style={{ fontSize: 18, color: T.navy }}>{member.latestAssessment?.score ?? "—"}</div>
-                </div>
-              </GlassCard>
+            {departments.length > 0 && (
+              <select
+                value={departmentFilter}
+                onChange={(event) => setDepartmentFilter(event.target.value)}
+                style={{ padding: "8px 12px", borderRadius: 10, border: "1px solid rgba(148,163,184,0.3)", fontSize: 12.5, marginBottom: 2 }}
+              >
+                <option value="">All departments</option>
+                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+                <option value="__none__">No department</option>
+              </select>
+            )}
+
+            {groupedTeam.every((group) => group.members.length === 0) && (
+              <p style={{ fontSize: 13, color: T.muted }}>No members in this department.</p>
+            )}
+
+            {groupedTeam.map((group) => (
+              <div key={group.id} style={{ display: "grid", gap: 10 }}>
+                {group.name && (
+                  <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 4 }}>
+                    {group.name} · {group.members.length}
+                  </div>
+                )}
+                {group.members.map((member) => (
+                  <GlassCard key={member.userId} style={{ padding: 16, cursor: "pointer", border: selected?.userId === member.userId ? `1px solid ${T.blue}30` : undefined, background: selected?.userId === member.userId ? "rgba(37,99,235,0.04)" : undefined }}
+                    onClick={() => selectMember(member.userId)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{ width: 44, height: 44, borderRadius: 13, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(member)}</div>
+                      <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 700, color: T.navy }}>{displayName(member)}</div><div style={{ fontSize: 11.5, color: T.muted, textTransform: "capitalize" }}>{member.role}{departmentName(member.departmentId) ? ` · ${departmentName(member.departmentId)}` : ""}</div></div>
+                      <div className="stat-num" style={{ fontSize: 18, color: T.navy }}>{member.latestAssessment?.score ?? "—"}</div>
+                    </div>
+                  </GlassCard>
+                ))}
+              </div>
             ))}
           </div>
 

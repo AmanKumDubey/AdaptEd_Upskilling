@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+const { FILE_UPLOAD } = require('../utilities/constants');
+
 // Phase B2: these routes had zero request validation before this phase - not a
 // migration of existing rules, new coverage per the SOW's "Zod-based request
 // validation on every route" requirement.
@@ -33,11 +35,19 @@ const toggleWishlistSchema = z.object({
   isWishlist: booleanish.optional().default(false),
 });
 
+// Phase B23: contentType/sizeBytes used to be freeform-optional (a client
+// could complete a course with no file-type/size info at all, or lie about
+// it) - re-validated here against the same allowlist/limit as
+// certificateSchemas.ts's presign step, since a client could call this
+// endpoint directly without ever presigning honestly.
 const completeCourseSchema = z.object({
   certificateKey: z.string({ message: 'certificateKey is required' }).min(1, 'certificateKey is required'),
   fileName: z.string().trim().optional().nullable(),
-  contentType: z.string().trim().optional().nullable(),
-  sizeBytes: z.union([z.number(), z.string()]).optional().nullable(),
+  contentType: z.enum(FILE_UPLOAD.ALLOWED_TYPES, {
+    message: 'Only PDF, JPEG, PNG, GIF, or WEBP files are supported',
+  }),
+  sizeBytes: z.coerce.number({ message: 'sizeBytes is required' }).int().positive()
+    .max(FILE_UPLOAD.MAX_SIZE, `File is too large (max ${FILE_UPLOAD.MAX_SIZE / (1024 * 1024)}MB)`),
 });
 
 const pageParam = z.coerce.number().int().min(1).optional();

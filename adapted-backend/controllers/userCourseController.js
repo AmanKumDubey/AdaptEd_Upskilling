@@ -279,9 +279,14 @@ const completeCourse = asyncHandler(async (req, res) => {
 
     // Phase B2: certificateKey presence/type already enforced by completeCourseSchema.
     // Not "verification of authenticity" - this is just access control:
-    // make sure the uploaded key is inside this user's folder prefix.
+    // make sure the uploaded key is inside this user's AND this course's
+    // folder (certificateController.js's buildCertificateKey mints keys as
+    // <prefix><userId>/<courseId>/...). Phase B23 fix: this used to check
+    // only the userId segment, so a certificate uploaded for one course
+    // could be replayed to mark a completely different course "completed"
+    // with no re-upload - courseId is now part of the required prefix.
     const prefix = process.env.AWS_S3_CERTIFICATES_PREFIX || 'certificates/';
-    const expectedKeyPrefix = `${prefix}${userId}/`;
+    const expectedKeyPrefix = `${prefix}${userId}/${courseId}/`;
     if (!certificateKey.startsWith(expectedKeyPrefix)) {
         return sendError(res, HTTP_STATUS.BAD_REQUEST, 'Invalid certificateKey');
     }

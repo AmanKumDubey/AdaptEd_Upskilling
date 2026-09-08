@@ -14,6 +14,16 @@ import { DataGuard } from "../../components/LoadingAndError";
 import { getInstructorNames, getPlatformStyle } from "./courseDisplay";
 import "./courses.css";
 
+// A 422 from validate() (middleware/validate.ts) always carries the generic
+// "Validation failed" as err.message - the actual reason (e.g. "Only PDF,
+// JPEG... are supported") is in err.data, an array of { field, message }.
+// Prefer that first field's message so a rejected certificate upload says
+// why, not just that something failed.
+function describeApiError(err) {
+  const detail = Array.isArray(err?.data) ? err.data[0]?.message : null;
+  return detail || err.message;
+}
+
 // Real backend course (adapted-backend's /api/courses/:id), replacing the
 // old hardcoded demo catalog lookup. No "linked learning-path module"
 // section - the real course marketplace has no equivalent concept.
@@ -50,7 +60,7 @@ export function CourseDetailsPage() {
       dashboardQuery.refetch();
       onSuccess?.();
     } catch (err) {
-      setActionError(err.message);
+      setActionError(describeApiError(err));
     }
   }
 
@@ -68,7 +78,7 @@ export function CourseDetailsPage() {
     setActionError(null);
     setUploading(true);
     try {
-      const presigned = await presignUpload({ courseId, fileName: file.name, contentType: file.type || "application/octet-stream" });
+      const presigned = await presignUpload({ courseId, fileName: file.name, contentType: file.type || "application/octet-stream", sizeBytes: file.size });
 
       const putRes = await fetch(presigned.uploadUrl, {
         method: "PUT",
@@ -79,12 +89,12 @@ export function CourseDetailsPage() {
 
       await completeCourse({
         courseId,
-        data: { certificateKey: presigned.key, fileName: file.name, contentType: file.type, sizeBytes: file.size },
+        data: { certificateKey: presigned.key, fileName: file.name, contentType: file.type || "application/octet-stream", sizeBytes: file.size },
       });
       dashboardQuery.refetch();
       certificatesQuery.refetch();
     } catch (err) {
-      setActionError(err.message);
+      setActionError(describeApiError(err));
     } finally {
       setUploading(false);
     }
@@ -156,7 +166,7 @@ export function CourseDetailsPage() {
                     <p style={{ fontSize: 12.5, color: "#64748B", marginBottom: 8 }}>
                       Upload your completion certificate to mark this course done.
                     </p>
-                    <input ref={fileInputRef} type="file" accept="application/pdf,image/*" style={{ display: "none" }} onChange={handleCertificateFile} />
+                    <input ref={fileInputRef} type="file" accept="application/pdf,image/jpeg,image/png,image/gif,image/webp" style={{ display: "none" }} onChange={handleCertificateFile} />
                     <button type="button" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
                       {uploading ? "Uploading…" : "Upload certificate"}
                     </button>

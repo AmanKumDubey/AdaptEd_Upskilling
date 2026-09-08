@@ -390,9 +390,7 @@ const generateRecommendationForUser = async ({ userId }) => {
 
     // TTL window
     const generatedAt = new Date();
-    // const expiresAt = new Date(Date.now() + DEFAULT_TTL_DAYS * 24 * 60 * 60 * 1000);
-    // TEMPORARY TESTING
-    const expiresAt = new Date(Date.now() + 60000);
+    const expiresAt = new Date(Date.now() + DEFAULT_TTL_DAYS * 24 * 60 * 60 * 1000);
 
     const batch = {
         generatedAt: generatedAt.toISOString(),

@@ -36,7 +36,9 @@ const assessmentSessionStatusEnum = pgEnum('enum_AssessmentSessions_status', ['i
 const assessmentResultLevelEnum = pgEnum('enum_AssessmentResults_level', ['Beginner', 'Developing', 'Intermediate', 'Advanced']);
 // Phase B13: notifications - starts with one event (a new member joining an
 // org an owner/admin/hr manages); more types get appended here, never renamed.
-const notificationTypeEnum = pgEnum('enum_Notifications_type', ['org_member_joined']);
+// Phase B18 added 'assessment_assigned' and 'assignment_due_soon' via
+// ALTER TYPE ... ADD VALUE (migrations/202609070004-notification-assignment-types.js).
+const notificationTypeEnum = pgEnum('enum_Notifications_type', ['org_member_joined', 'assessment_assigned', 'assignment_due_soon']);
 
 const users = pgTable('Users', {
   id: uuid('id').primaryKey(),
@@ -352,6 +354,38 @@ const learningPaths = pgTable('LearningPaths', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
 
+// Phase B17: the onboarding wizard's answers (location, education, target
+// role, learning preferences, etc.) were 100% localStorage until now - one
+// row per user, `data` is the whole profile object as-is (its shape is
+// frontend-owned and evolves there, same trust boundary as LearningPaths'
+// `stages` blob) so this table doesn't need a migration every time a wizard
+// field is added or renamed.
+const onboardingProfiles = pgTable('OnboardingProfiles', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('userId').notNull().unique(),
+  data: jsonb('data').notNull(),
+  onboardingCompleted: boolean('onboardingCompleted').notNull().default(false),
+  completedAt: timestamp('completedAt', { withTimezone: true }),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
+// Phase B16: an owner/admin/hr assigning a specific assessment track to a
+// team member. There's no separate "completed" flag here on purpose - it's
+// derived by checking whether a matching AssessmentResults row exists with
+// completedAt after this row's createdAt (see assessmentAssignmentController.js),
+// the same "derive, don't duplicate" approach LearningPaths' module status uses.
+const assessmentAssignments = pgTable('AssessmentAssignments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('orgId').notNull(),
+  userId: uuid('userId').notNull(),
+  assignedBy: uuid('assignedBy').notNull(),
+  personaId: assessmentPersonaEnum('personaId').notNull(),
+  dueAt: timestamp('dueAt', { withTimezone: true }),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
 // Phase B13: notifications - one row per (recipient, event). `data` carries
 // whatever the notification's type needs to deep-link/render (e.g. orgId for
 // org_member_joined) without another join; readAt null means unread.
@@ -387,5 +421,7 @@ module.exports = {
   assessmentSessions,
   assessmentResults,
   learningPaths,
+  assessmentAssignments,
   notifications,
+  onboardingProfiles,
 };

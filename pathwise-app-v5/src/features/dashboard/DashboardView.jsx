@@ -7,6 +7,7 @@ import { T } from "../../theme";
 import { authEnabled, loadHistory, loadLatestResult } from "../assessment/assessmentBackend";
 import { getPlatformStyle } from "../courses/courseDisplay";
 import { loadPath } from "../learning-path/learningPathBackend";
+import { loadProfile } from "../onboarding/onboardingBackend";
 import { useSkillsWallet } from "../skills/skillsEngine";
 import { useAssessmentResult, useLearningPath, useProfile } from "../../state/PathwiseDataContext";
 import { useMyCoursesDashboard } from "../../hooks";
@@ -30,7 +31,7 @@ export function DashboardView(props) {
 // backend, so unlike the demo view this omits the streak badge instead of
 // fabricating one.
 function RealDashboardView({ setCurrentView }) {
-  const [profile] = useProfile();
+  const [profile, setProfile] = useProfile();
   const [learningPath, setLearningPath] = useLearningPath();
   const [, setAssessmentResult] = useAssessmentResult();
   const coursesQuery = useMyCoursesDashboard();
@@ -38,23 +39,24 @@ function RealDashboardView({ setCurrentView }) {
   const [history, setHistory] = useState(null);
   const navigate = useNavigate();
 
-  // The learningPath/assessmentResult context only hydrates from localStorage
-  // on mount (PathwiseDataContext.jsx) - LearningPathView.jsx and
-  // AssessmentResultsPage.jsx each reconcile it against the server the first
-  // time a learner visits them, but the Dashboard is usually the very first
-  // page a learner lands on, so it needs the same reconcile-on-mount here too
-  // (otherwise a fresh login/browser shows "no path"/"no assessment" even
-  // when the server has both).
+  // The profile/learningPath/assessmentResult context only hydrates from
+  // localStorage on mount (PathwiseDataContext.jsx) - ProfilePage.jsx/
+  // LearningPathView.jsx/AssessmentResultsPage.jsx each reconcile their own
+  // slice against the server the first time a learner visits them, but the
+  // Dashboard is usually the very first page a learner lands on, so it needs
+  // the same reconcile-on-mount here too (otherwise a fresh login/browser
+  // shows stale or missing data even when the server has it).
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadPath(), loadLatestResult(), loadHistory()]).then(([path, result, results]) => {
+    Promise.all([loadProfile(), loadPath(), loadLatestResult(), loadHistory()]).then(([fetchedProfile, path, result, results]) => {
       if (cancelled) return;
+      setProfile(fetchedProfile || null);
       setLearningPath(path || null);
       setAssessmentResult(result || null);
       setHistory(results);
     });
     return () => { cancelled = true; };
-  }, [setLearningPath, setAssessmentResult]);
+  }, [setProfile, setLearningPath, setAssessmentResult]);
 
   const learnerName = profile?.firstName?.trim();
   const targetRole = learningPath?.targetRole || profile?.targetRole;

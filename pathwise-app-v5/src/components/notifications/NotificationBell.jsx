@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { T } from "../../theme";
 import {
   useMarkAllNotificationsRead,
@@ -9,6 +10,22 @@ import {
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 const POLL_MS = 45000;
+
+// Phase B20: where clicking a notification should take you - one route per
+// type, not per notification, since every notification of a type points at
+// the same place a learner/manager would go to act on it (there's no
+// per-item deep link like a specific assessment attempt to jump to).
+function resolveNotificationRoute(notification) {
+  switch (notification.type) {
+    case "org_member_joined":
+      return "/employer/team";
+    case "assessment_assigned":
+    case "assignment_due_soon":
+      return "/assessment/library";
+    default:
+      return null;
+  }
+}
 
 // Phase B13: notifications only exist server-side (there's nothing to poll
 // or show in demo mode) - unlike most Real/Demo splits in this app, the demo
@@ -21,6 +38,7 @@ export function NotificationBell({ collapsed }) {
 function RealNotificationBell({ collapsed }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
+  const navigate = useNavigate();
   const { data: countData, refetch: refetchCount } = useUnreadNotificationCount();
   const { data: items, loading, refetch: refetchList } = useNotifications();
   const { execute: markRead } = useMarkNotificationRead();
@@ -55,6 +73,9 @@ function RealNotificationBell({ collapsed }) {
       refetchCount();
       refetchList();
     }
+    setOpen(false);
+    const route = resolveNotificationRoute(item);
+    if (route) navigate(route);
   };
 
   const handleMarkAll = async () => {
@@ -114,7 +135,10 @@ function RealNotificationBell({ collapsed }) {
                 fontFamily: "inherit",
               }}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, color: T.navy, marginBottom: 2 }}>{item.title}</div>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: T.navy, marginBottom: 2 }}>{item.title}</div>
+                {resolveNotificationRoute(item) && <span style={{ color: T.faint, fontSize: 12, flexShrink: 0 }}>→</span>}
+              </div>
               <div style={{ fontSize: 11.5, color: T.muted }}>{item.message}</div>
             </button>
           ))}

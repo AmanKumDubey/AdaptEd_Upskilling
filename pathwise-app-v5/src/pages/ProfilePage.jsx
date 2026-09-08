@@ -496,9 +496,17 @@ export function ProfilePage({ profile }) {
           <Link className="btn-primary" to="/onboarding" style={{ padding: "11px 18px", borderRadius: 12, textDecoration: "none", fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }}>
             Edit onboarding answers
           </Link>
-          <button type="button" className="btn-ghost" style={{ padding: "11px 18px", borderRadius: 12, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }} onClick={() => setConfirmingReset(true)}>
-            Reset demo data
-          </button>
+          {/* Phase B17: real mode now persists the onboarding profile
+              server-side (adapted-backend's OnboardingProfiles) - clearing
+              only the local cache here would look reset until the next
+              reconcile-on-mount (see router.jsx's StartRoute) pulled it
+              straight back from the server. This button only ever made
+              sense against the local-only stand-ins demo mode uses. */}
+          {!authEnabled && (
+            <button type="button" className="btn-ghost" style={{ padding: "11px 18px", borderRadius: 12, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }} onClick={() => setConfirmingReset(true)}>
+              Reset demo data
+            </button>
+          )}
           {authEnabled && (
             <LogoutButton style={{ padding: "11px 18px", borderRadius: 12, fontSize: 12.5, fontWeight: 700, whiteSpace: "nowrap" }} />
           )}

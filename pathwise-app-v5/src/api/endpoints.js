@@ -153,8 +153,8 @@ export const myCourses = {
 export const certificates = {
   // POST /api/me/courses/:courseId/certificates/presign  { fileName,
   // contentType } -> { uploadUrl, key, bucket, expiresInSeconds }
-  presignUpload: (courseId, fileName, contentType) =>
-    api.post(`/me/courses/${courseId}/certificates/presign`, { fileName, contentType }),
+  presignUpload: (courseId, fileName, contentType, sizeBytes) =>
+    api.post(`/me/courses/${courseId}/certificates/presign`, { fileName, contentType, sizeBytes }),
 
   // GET /api/me/certificates?courseId= -> [{ ...certificate, course, downloadUrl }]
   list: (courseId) => api.get("/me/certificates", courseId ? { courseId } : null),
@@ -216,11 +216,37 @@ export const organizations = {
   // DELETE /api/orgs/:orgId/invitations/:invitationId (owner/admin/hr only)
   revokeInvitation: (orgId, invitationId) =>
     api.delete(`/orgs/${orgId}/invitations/${invitationId}`),
+
+  // POST /api/orgs/:orgId/assessment-assignments  { userId, personaId, dueAt? } (owner/admin/hr only)
+  createAssignment: (orgId, userId, personaId, dueAt) =>
+    api.post(`/orgs/${orgId}/assessment-assignments`, { userId, personaId, dueAt }),
+
+  // GET /api/orgs/:orgId/assessment-assignments (owner/admin/hr only)
+  listAssignments: (orgId) => api.get(`/orgs/${orgId}/assessment-assignments`),
+
+  // DELETE /api/orgs/:orgId/assessment-assignments/:assignmentId (owner/admin/hr only)
+  revokeAssignment: (orgId, assignmentId) =>
+    api.delete(`/orgs/${orgId}/assessment-assignments/${assignmentId}`),
+};
+
+// GET /api/me/assessment-assignments -> [{ id, personaId, dueAt, completed, createdAt }]
+export const myAssignments = {
+  listMine: () => api.get("/me/assessment-assignments"),
 };
 
 // POST /api/invitations/accept  { token } -> { membership }
 export const invitations = {
   accept: (token) => api.post("/invitations/accept", { token }),
+};
+
+// ─── Onboarding profile (Phase B17) ────────────────────────────────────
+export const onboardingProfile = {
+  // GET /api/me/onboarding-profile -> { profile } (the full wizard object
+  // plus onboardingCompleted/completedAt, or null if never saved)
+  get: () => api.get("/me/onboarding-profile"),
+
+  // PUT /api/me/onboarding-profile  <full profile object> -> { profile }
+  save: (data) => api.put("/me/onboarding-profile", data),
 };
 
 // ─── Notifications (Phase B13) ────────────────────────────────────────

@@ -5,6 +5,7 @@ import { ASSESSMENTS } from "../../data/mockData";
 import { PERSONAS } from "../../SkillsAssessment";
 import { T } from "../../theme";
 import { authEnabled, loadHistory } from "./assessmentBackend";
+import { useMyAssignments } from "../../hooks";
 
 // ─── Assessments ─────────────────────────────────────────────────────
 // Split into two full components (rather than branching mid-component) so
@@ -27,6 +28,8 @@ function formatDate(value) {
 function RealAssessmentHistory() {
   const navigate = useNavigate();
   const [history, setHistory] = useState(null);
+  const { data: assignments } = useMyAssignments();
+  const pendingAssignments = (assignments || []).filter((a) => !a.completed);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +64,24 @@ function RealAssessmentHistory() {
           ))}
         </div>
       </div>
+
+      {pendingAssignments.length > 0 && (
+        <div className="fade-up s2" style={{ marginBottom: 28 }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: T.navy, marginBottom: 12 }}>Assigned to you</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
+            {pendingAssignments.map((assignment) => (
+              <GlassCard key={assignment.id} style={{ padding: 18, border: `1px solid ${T.amber}30` }}>
+                <Badge variant="amber">Assigned</Badge>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: T.navy, margin: "10px 0 4px" }}>{PERSONAS[assignment.personaId]?.title || assignment.personaId}</h3>
+                {assignment.dueAt && <p style={{ fontSize: 12, color: T.muted, marginBottom: 14 }}>Due {formatDate(assignment.dueAt)}</p>}
+                <button className="btn-primary" style={{ width: "100%", fontSize: 12 }} onClick={() => navigate(`/assessment?persona=${assignment.personaId}`)}>
+                  Start assessment →
+                </button>
+              </GlassCard>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="fade-up s2">
         <h2 style={{ fontSize: 16, fontWeight: 700, color: T.navy, marginBottom: 12 }}>Past attempts</h2>

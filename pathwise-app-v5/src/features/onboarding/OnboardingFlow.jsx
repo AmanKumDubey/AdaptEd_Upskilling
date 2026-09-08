@@ -3,6 +3,7 @@ import { FrostBackground } from "../../components/layout/FrostBackground";
 import { ROLES, SKILL_CATEGORIES } from "../../data/mockData";
 import { useProfile } from "../../state/PathwiseDataContext";
 import { auth } from "../../api/endpoints";
+import { saveProfile } from "./onboardingBackend";
 import {
   EMPTY_ONBOARDING_PROFILE,
   clearOnboardingDraft,
@@ -160,28 +161,32 @@ export function OnboardingFlow({ onComplete }) {
 
   const handleBack = () => goToStep(Math.max(step - 1, 0));
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const nextErrors = validateStep(step, data, confirmed);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
-    const profile = setProfile(data);
+    // Phase B17: saveProfile() persists the full wizard answers server-side
+    // in live mode (adapted-backend's OnboardingProfiles table) - previously
+    // only firstName/lastName/interests had anywhere to go (see the
+    // auth.updateProfile() call below), so everything else vanished on a
+    // fresh browser/device. setProfile() below just caches the result
+    // locally, same as completeAssessment()/generatePath() elsewhere.
+    const saved = await saveProfile(data);
+    setProfile(saved);
     clearOnboardingDraft();
 
-    // Best-effort sync to the backend Users table - only firstName/lastName/
-    // interests actually have a column there. Everything else this wizard
-    // collects (location, education, skills, target role, availability,
-    // learning style...) has no backend field yet, so it stays local-only
-    // for now. Non-blocking: this frontend profile is the source of truth
-    // regardless of whether the sync succeeds (e.g. VITE_AUTH_ENABLED=false).
+    // Best-effort, separate from the save above: the Account section
+    // (ProfilePage.jsx) reads name/interests off the Users table directly,
+    // not off the onboarding profile, so this keeps that in sync too.
     auth.updateProfile({
       firstName: data.firstName,
       lastName: data.lastName,
       interests: data.interests,
     }).catch(() => {});
 
-    onComplete(profile);
+    onComplete(saved);
   };
 
   const handleStartAgain = () => {

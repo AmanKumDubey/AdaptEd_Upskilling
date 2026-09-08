@@ -22,6 +22,7 @@ import {
   organizations as organizationsApi,
   invitations as invitationsApi,
   notifications as notificationsApi,
+  myAssignments as myAssignmentsApi,
 } from "../api/endpoints";
 
 // ─── Not implemented on the backend yet ──────────────────────────────
@@ -127,8 +128,8 @@ export function useCertificates(courseId) {
 }
 
 export function usePresignCertificateUpload() {
-  return useMutation(({ courseId, fileName, contentType }) =>
-    certificatesApi.presignUpload(courseId, fileName, contentType)
+  return useMutation(({ courseId, fileName, contentType, sizeBytes }) =>
+    certificatesApi.presignUpload(courseId, fileName, contentType, sizeBytes)
   );
 }
 
@@ -201,6 +202,27 @@ export function useUpdateMemberDepartment() {
 
 export function useAcceptInvitation() {
   return useMutation((token) => invitationsApi.accept(token));
+}
+
+// ─── Assessment assignments ───────────────────────────────────────────
+export function useOrgAssignments(orgId) {
+  return useApi(() => organizationsApi.listAssignments(orgId), {
+    initialData: [],
+    enabled: !!orgId,
+    deps: [orgId],
+  });
+}
+
+export function useCreateAssignment() {
+  return useMutation(({ orgId, userId, personaId, dueAt }) => organizationsApi.createAssignment(orgId, userId, personaId, dueAt));
+}
+
+export function useRevokeAssignment() {
+  return useMutation(({ orgId, assignmentId }) => organizationsApi.revokeAssignment(orgId, assignmentId));
+}
+
+export function useMyAssignments() {
+  return useApi(() => myAssignmentsApi.listMine(), { initialData: [] });
 }
 
 // ─── Notifications ───────────────────────────────────────────────────

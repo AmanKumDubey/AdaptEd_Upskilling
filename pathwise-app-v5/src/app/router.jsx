@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import LearningPathFramework from "../LearningPathFramework";
 import { AssessmentExperience } from "../features/assessment/AssessmentExperience";
@@ -16,9 +17,11 @@ import { useEmployerAccess } from "../features/employer/employerAccess";
 import { LearningModulePage } from "../features/learning-path/LearningModulePage";
 import { LearningPathView } from "../features/learning-path/LearningPathView";
 import { OnboardingFlow } from "../features/onboarding/OnboardingFlow";
+import { authEnabled as onboardingAuthEnabled, loadProfile } from "../features/onboarding/onboardingBackend";
 import { loadOnboardingProfile } from "../features/onboarding/onboardingStorage";
 import PathwisePlatform from "../features/platform/PathwisePlatform";
 import { SkillsWalletView } from "../features/skills/SkillsWalletView";
+import { useProfile } from "../state/PathwiseDataContext";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { ProfilePage } from "../pages/ProfilePage";
 import { DashboardView as ApiDashboardView } from "../views/DashboardView";
@@ -63,9 +66,33 @@ function OnboardingRoute() {
 // ever truthy in real (authEnabled) mode for someone who actually manages an
 // organization, so demo mode and plain learners keep the exact same
 // behavior as before.
+//
+// Phase B17: the onboarding profile now lives server-side too, so a
+// completed-but-cache-empty case (new browser/device, same account) needs a
+// one-time server check before deciding /onboarding vs /dashboard - otherwise
+// someone who already finished onboarding on another device would be sent
+// through the wizard again. Skipped entirely when the local cache already
+// says completed (the common case) or in demo mode, so this adds no extra
+// latency there.
 function StartRoute() {
-  const profile = loadOnboardingProfile();
+  const [profile, setProfile] = useProfile();
   const employerAccess = useEmployerAccess();
+  const [checkedServer, setCheckedServer] = useState(!onboardingAuthEnabled || Boolean(profile?.onboardingCompleted));
+
+  useEffect(() => {
+    if (checkedServer) return undefined;
+    let cancelled = false;
+    loadProfile().then((fetched) => {
+      if (cancelled) return;
+      setProfile(fetched || null);
+      setCheckedServer(true);
+    });
+    return () => { cancelled = true; };
+  }, [checkedServer, setProfile]);
+
+  if (!checkedServer) {
+    return <LoadingState message="Loading Pathwise..." />;
+  }
 
   if (!profile?.onboardingCompleted) {
     return <Navigate to="/onboarding" replace />;

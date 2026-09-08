@@ -3,7 +3,7 @@ import { GlassCard } from "../../components/UIKit";
 import { EMPLOYEES } from "../../data/mockData";
 import { T } from "../../theme";
 import { authEnabled } from "./employerAccess";
-import { averagePathProgress, averageScore, displayName, domainRollup, initials, topDomains, useTeamProgress } from "./employerData";
+import { averagePathProgress, averageScore, displayName, domainRollup, downloadCSV, initials, teamToCSV, topDomains, useTeamProgress } from "./employerData";
 import { NoOrgAccess } from "./NoOrgAccess";
 
 // ─── Employer Dashboard ──────────────────────────────────────────────
@@ -40,11 +40,22 @@ function RealEmployerDashboard() {
     { label: "Avg. Path Progress", value: avgPathProgress === null ? "—" : `${avgPathProgress}%`, sub: "of generated roadmaps", color: T.violet },
   ];
 
+  const handleExport = () => {
+    const csv = teamToCSV(team);
+    const orgSlug = (employerAccess.org?.name || "team").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+    downloadCSV(csv, `${orgSlug}-report-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
+
   return (
     <div>
-      <div className="fade-up" style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Team Overview</h1>
-        <p style={{ color: T.muted, fontSize: 14.5 }}>Monitor your team's learning progress and skill development</p>
+      <div className="fade-up" style={{ marginBottom: 32, display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Team Overview</h1>
+          <p style={{ color: T.muted, fontSize: 14.5 }}>Monitor your team's learning progress and skill development</p>
+        </div>
+        <button type="button" className="btn-ghost" style={{ fontSize: 12.5 }} onClick={handleExport} disabled={team.length === 0}>
+          Export Team Report
+        </button>
       </div>
 
       <div className="fade-up s1" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>

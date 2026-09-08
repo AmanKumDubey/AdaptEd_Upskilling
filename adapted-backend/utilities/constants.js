@@ -65,10 +65,13 @@ const JWT = {
   ALGORITHM: 'HS256'
 };
 
-// File Upload
+// File Upload - shared by the certificate-upload flow (schemas/certificateSchemas.ts,
+// schemas/courseSchemas.ts's completeCourseSchema). Previously defined but
+// never referenced anywhere (a Sequelize-era leftover, back when uploads went
+// to local disk - see UPLOAD_PATH); this is its first real use.
 const FILE_UPLOAD = {
-  MAX_SIZE: 5 * 1024 * 1024, // 5MB
-  ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+  MAX_SIZE: 10 * 1024 * 1024, // 10MB - certificates are often scanned PDFs, bumped from the unused 5MB default
+  ALLOWED_TYPES: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
   UPLOAD_PATH: './uploads/'
 };
 

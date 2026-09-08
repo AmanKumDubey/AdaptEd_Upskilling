@@ -147,7 +147,11 @@ function CertificatesSection({ certificates }) {
             <GlassCard key={certificate.id} style={{ padding: 18 }}>
               <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 10 }}>
                 <span style={{ fontSize: 22 }}>🎓</span>
-                <Badge variant="green">Verified ✓</Badge>
+                {/* Phase B23: "Verified" overstated what this is - the
+                    backend only checks the upload belongs to this user and
+                    course, not that the document is authentic (see
+                    userCourseController.js's completeCourse comment). */}
+                <Badge variant="green">Submitted ✓</Badge>
               </div>
               <div style={{ fontSize: 14, fontWeight: 700, color: T.navy, marginBottom: 4, lineHeight: 1.35 }}>{certificate.courseTitle}</div>
               <div style={{ fontSize: 12, color: T.muted }}>{certificate.provider}</div>

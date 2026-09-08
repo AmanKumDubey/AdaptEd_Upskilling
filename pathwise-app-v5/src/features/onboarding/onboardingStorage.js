@@ -102,6 +102,16 @@ export function clearOnboardingProfile() {
 }
 
 export function saveOnboardingProfile(data) {
+  // A falsy `data` means "no profile" (e.g. reconciling against a server
+  // that has none yet) - spreading normalizeProfile(null) (itself null)
+  // would otherwise still produce a truthy { onboardingCompleted: true }
+  // object, the same landmine learningPathStorage.js's saveLearningPath()
+  // had before it was fixed.
+  if (!data) {
+    clearOnboardingProfile();
+    return null;
+  }
+
   const profile = {
     ...normalizeProfile(data),
     onboardingCompleted: true,

@@ -29,6 +29,8 @@ const invitationRoutes = require('./routes/invitationRoutes');
 const assessmentRoutes = require('./routes/assessmentRoutes');
 const learningPathRoutes = require('./routes/learningPathRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const meAssignmentRoutes = require('./routes/meAssignmentRoutes');
+const meOnboardingProfileRoutes = require('./routes/meOnboardingProfileRoutes');
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -91,6 +93,12 @@ app.use('/api/invitations', invitationRoutes);
 
 // Notifications (Phase B13)
 app.use('/api/me/notifications', notificationRoutes);
+
+// Assessment assignments - assignee's own view (Phase B16)
+app.use('/api/me/assessment-assignments', meAssignmentRoutes);
+
+// Onboarding wizard profile, persisted per account (Phase B17)
+app.use('/api/me/onboarding-profile', meOnboardingProfileRoutes);
 
 // Phase 1 stabilization: this endpoint now verifies PostgreSQL, not only the HTTP server.
 app.get('/api/health', healthCheck);

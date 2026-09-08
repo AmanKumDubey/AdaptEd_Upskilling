@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useCourses, useMyCoursesDashboard, useToggleWishlist } from "../../hooks";
 import { COURSE_LEVELS, COURSE_PLATFORMS, getPlatformStyle } from "./courseDisplay";
 import { DataGuard } from "../../components/LoadingAndError";
+import { RecommendationsPanel } from "./RecommendationsPanel";
 import "./courses.css";
 
 // Real backend catalog (adapted-backend's /api/courses - scraped Coursera/
@@ -66,6 +67,8 @@ export function CoursesView() {
         </div>
         <div className="courses-hero-stats"><span><b>{meta.total}</b> courses available</span></div>
       </section>
+
+      <RecommendationsPanel />
 
       <section className="courses-toolbar fade-up">
         <label className="courses-search">

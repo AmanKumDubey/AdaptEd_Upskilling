@@ -4,6 +4,7 @@ import { T } from "../../theme";
 import { authEnabled } from "./employerAccess";
 import { displayName, initials, useTeamProgress } from "./employerData";
 import { NoOrgAccess } from "./NoOrgAccess";
+import { AssignmentsPanel } from "./AssignmentsPanel";
 
 // ─── Employer Assessments ────────────────────────────────────────────
 export function EmployerAssessmentsView() {
@@ -23,10 +24,10 @@ function ComingSoonCard({ title }) {
 }
 
 // Phase B10: "Recent Results" now shows each member's real most recent
-// assessment. "Pending Assignments" and "Quick Actions" (bulk-assign,
-// scheduling, target-setting) imply features that don't exist anywhere in
-// the backend - left as an honest "not built yet" note rather than faking
-// data for them, unlike Recent Results where the real data already exists.
+// assessment. Phase B16 adds real single-member assignment ("Pending
+// Assignments"); "Quick Actions" (bulk-assign, scheduling, target-setting)
+// still implies features that don't exist anywhere in the backend - left as
+// an honest "not built yet" note rather than faking data for them.
 function RealEmployerAssessmentsView() {
   const { employerAccess } = useOutletContext();
   const { data: team, loading } = useTeamProgress(employerAccess.org?.id);
@@ -75,7 +76,7 @@ function RealEmployerAssessmentsView() {
       </GlassCard>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-        <ComingSoonCard title="Pending Assignments" />
+        <AssignmentsPanel orgId={employerAccess.org?.id} team={team} />
         <ComingSoonCard title="Quick Actions" />
       </div>
     </div>
