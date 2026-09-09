@@ -62,7 +62,7 @@ export function SkillsWalletView() {
   return (
     <div>
       <div className="fade-up" style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
             <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Skills Wallet</h1>
             <p style={{ color: T.muted, fontSize: 14.5 }}>Your verified credentials & skill portfolio</p>
@@ -75,7 +75,7 @@ export function SkillsWalletView() {
         <SkillsWalletEmptyState profile={profile} result={result} />
       ) : (
         <>
-          <div className="fade-up s1" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 28 }}>
+          <div className="fade-up s1 grid-4col" style={{ marginBottom: 28 }}>
             {[
               { label: "Total Skills", value: String(wallet.stats.totalSkills), icon: "❖", color: T.blue },
               { label: "Verified", value: String(wallet.stats.verified), icon: "✓", color: T.green },

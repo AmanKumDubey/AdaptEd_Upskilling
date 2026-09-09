@@ -49,6 +49,7 @@ function RealEmployerAssessmentsView() {
         {loading && <p style={{ fontSize: 13, color: T.muted }}>Loading…</p>}
         {!loading && results.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No completed assessments yet.</p>}
         {results.length > 0 && (
+          <div className="table-scroll">
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>{["Employee", "Track", "Score", "Date", "Level"].map(h => (
@@ -72,10 +73,11 @@ function RealEmployerAssessmentsView() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </GlassCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+      <div className="grid-2col">
         <AssignmentsPanel orgId={employerAccess.org?.id} team={team} />
         <ComingSoonCard title="Quick Actions" />
       </div>
@@ -87,7 +89,7 @@ function DemoEmployerAssessmentsView() {
   return (
     <div>
       <div className="fade-up" style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div><h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Assessment Management</h1><p style={{ color: T.muted, fontSize: 14.5 }}>Assign, track, and review team assessments</p></div>
           <button className="btn-primary">+ Create Assessment</button>
         </div>
@@ -95,6 +97,7 @@ function DemoEmployerAssessmentsView() {
 
       <GlassCard className="fade-up s1" style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Recent Results</div>
+        <div className="table-scroll">
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>{["Employee","Assessment","Score","Date","Status"].map(h => (
@@ -124,9 +127,10 @@ function DemoEmployerAssessmentsView() {
             ))}
           </tbody>
         </table>
+        </div>
       </GlassCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+      <div className="grid-2col">
         <GlassCard className="fade-up s2">
           <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16, fontFamily: "'General Sans'" }}>Pending Assignments</div>
           {[{ emp: "James Wu", a: "Docker & Kubernetes", due: "Feb 15" }, { emp: "Marcus Rivera", a: "System Design", due: "Feb 18" }, { emp: "Elena Volkov", a: "Data Analytics", due: "Feb 20" }].map((x, i) => (

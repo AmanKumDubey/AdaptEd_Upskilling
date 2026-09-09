@@ -14,6 +14,76 @@ import { useMyCoursesDashboard } from "../../hooks";
 
 const LEVEL_COLOR = (score) => (score >= 80 ? T.green : score >= 60 ? T.blue : score >= 40 ? T.amber : T.rose);
 
+// ─── Shared presentational pieces (Phase B28 visual pass) ─────────────
+// Both Real and Demo views render identically-shaped data through the same
+// small building blocks below, so a learner never sees a visual seam
+// between the two modes - only the numbers behind them differ.
+
+function Avatar({ name, size = 52 }) {
+  const initial = (name?.[0] || "P").toUpperCase();
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: size * 0.32, flexShrink: 0,
+      background: `linear-gradient(135deg, ${T.blue}, ${T.violet})`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      color: "white", fontWeight: 700, fontSize: size * 0.36, fontFamily: "'General Sans'",
+      boxShadow: `0 8px 20px ${T.blue}30`,
+    }}>
+      {initial}
+    </div>
+  );
+}
+
+function HeroStat({ icon, color, value, label }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, background: `${color}14`, border: `1px solid ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{icon}</div>
+      <div>
+        <div className="stat-num" style={{ fontSize: 24, color: T.navy, lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{label}</div>
+      </div>
+    </div>
+  );
+}
+
+function HeroCard({ eyebrow, stats, percent, badgeSlot }) {
+  return (
+    <GlassCard className="fade-up s1" style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, rgba(37,99,235,0.07), rgba(139,92,246,0.04), rgba(255,255,255,0.6))", border: "1px solid rgba(37,99,235,0.12)", marginBottom: 20, padding: 28 }}>
+      <div aria-hidden="true" style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: `radial-gradient(circle, ${T.violet}18, transparent 70%)`, filter: "blur(10px)" }} />
+      <div style={{ position: "relative", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 260 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.blue, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>{eyebrow}</div>
+          <div style={{ display: "flex", gap: 26, marginBottom: 22, flexWrap: "wrap" }}>
+            {stats.map((s) => <HeroStat key={s.label} icon={s.icon} color={s.color} value={s.value} label={s.label} />)}
+          </div>
+          <div style={{ height: 8, background: "rgba(148,163,184,0.1)", borderRadius: 5, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${percent}%`, background: `linear-gradient(90deg, ${T.blue}, ${T.violet})`, borderRadius: 5, transition: "width 1.6s cubic-bezier(0.16,1,0.3,1)", boxShadow: `0 0 12px ${T.blue}60` }} />
+          </div>
+        </div>
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <ProgressRing progress={percent} size={100} stroke={7} color={T.blue} />
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
+            <div className="stat-num" style={{ fontSize: 25, color: T.blue }}>{percent}%</div>
+          </div>
+        </div>
+      </div>
+      {badgeSlot}
+    </GlassCard>
+  );
+}
+
+function ScoreRing({ score, size = 42 }) {
+  const color = LEVEL_COLOR(score);
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <ProgressRing progress={score} size={size} stroke={3.5} color={color} />
+      <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span className="stat-num" style={{ fontSize: size * 0.27, color }}>{score}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dashboard ───────────────────────────────────────────────────────
 // Split into two full components (rather than branching mid-component) so
 // neither side's hooks can ever collide - authEnabled is fixed at build
@@ -75,65 +145,60 @@ function RealDashboardView({ setCurrentView }) {
 
   return (
     <div>
-      <div className="fade-up" style={{ marginBottom: 28 }}>
-        <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Good morning{learnerName ? `, ${learnerName}` : ""} ✦</h1>
-        {targetRole && (
-          <p style={{ color: T.muted, fontSize: 14.5 }}>You're <span style={{ color: T.blue, fontWeight: 700 }}>{pathPercent}%</span> of the way to <span style={{ color: T.navy, fontWeight: 600 }}>{targetRole}</span></p>
-        )}
+      <div className="fade-up" style={{ marginBottom: 28, display: "flex", alignItems: "center", gap: 16 }}>
+        <Avatar name={learnerName} />
+        <div>
+          <h1 style={{ fontFamily: "'General Sans'", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>Good morning{learnerName ? `, ${learnerName}` : ""} ✦</h1>
+          {targetRole && (
+            <p style={{ color: T.muted, fontSize: 14.5 }}>You're <span style={{ color: T.blue, fontWeight: 700 }}>{pathPercent}%</span> of the way to <span style={{ color: T.navy, fontWeight: 600 }}>{targetRole}</span></p>
+          )}
+        </div>
       </div>
 
       {/* Hero Progress */}
       {learningPath ? (
-        <GlassCard className="fade-up s1" style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(139,92,246,0.03), rgba(255,255,255,0.6))", border: "1px solid rgba(37,99,235,0.12)", marginBottom: 20, padding: 28 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: T.blue, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16, fontFamily: "'General Sans'" }}>Path to {targetRole}</div>
-              <div style={{ display: "flex", gap: 28, marginBottom: 20 }}>
-                {[
-                  { v: String(skillsWallet.stats.totalSkills), l: "Skills Acquired" },
-                  { v: String(completedCourses.length), l: "Courses Done" },
-                  { v: String((history || []).length), l: "Assessments" },
-                  { v: `${learningHours}h`, l: "Learning Time" },
-                ].map(d => (
-                  <div key={d.l}><div className="stat-num" style={{ fontSize: 28, color: T.navy }}>{d.v}</div><div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{d.l}</div></div>
-                ))}
-              </div>
-              <div style={{ height: 7, background: "rgba(148,163,184,0.1)", borderRadius: 4, overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${pathPercent}%`, background: `linear-gradient(90deg, ${T.blue}, #8B5CF6)`, borderRadius: 4, transition: "width 1.6s cubic-bezier(0.16,1,0.3,1)" }} />
-              </div>
-            </div>
-            <div style={{ marginLeft: 36, position: "relative" }}>
-              <ProgressRing progress={pathPercent} size={96} stroke={7} color={T.blue} />
-              <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-                <div className="stat-num" style={{ fontSize: 24, color: T.blue }}>{pathPercent}%</div>
-              </div>
-            </div>
-          </div>
-        </GlassCard>
+        <HeroCard
+          eyebrow={`Path to ${targetRole}`}
+          percent={pathPercent}
+          stats={[
+            { icon: "🎯", color: T.blue, value: String(skillsWallet.stats.totalSkills), label: "Skills Acquired" },
+            { icon: "📚", color: T.green, value: String(completedCourses.length), label: "Courses Done" },
+            { icon: "🧠", color: T.violet, value: String((history || []).length), label: "Assessments" },
+            { icon: "⏱", color: T.amber, value: `${learningHours}h`, label: "Learning Time" },
+          ]}
+        />
       ) : (
         <GlassCard className="fade-up s1" style={{ marginBottom: 20, padding: 28, textAlign: "center" }}>
+          <div style={{ fontSize: 30, marginBottom: 10 }}>🧭</div>
           <div style={{ fontSize: 14.5, color: T.muted, marginBottom: 14 }}>You don't have a learning path yet.</div>
           <button className="btn-primary" style={{ fontSize: 13 }} onClick={() => setCurrentView("path")}>Build my learning path →</button>
         </GlassCard>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+      <div className="grid-2col" style={{ marginBottom: 20 }}>
         {/* Continue Learning */}
         <GlassCard className="fade-up s2">
           <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Continue Learning</div>
           {coursesQuery.loading && <p style={{ fontSize: 13, color: T.muted }}>Loading…</p>}
-          {!coursesQuery.loading && continueLearning.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No courses in progress yet.</p>}
+          {!coursesQuery.loading && continueLearning.length === 0 && (
+            <div style={{ textAlign: "center", padding: "18px 0" }}>
+              <div style={{ fontSize: 26, marginBottom: 6, opacity: 0.6 }}>📖</div>
+              <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>No courses in progress yet.</p>
+            </div>
+          )}
           {continueLearning.slice(0, 2).map((uc, i) => {
-            const { mark, accent } = getPlatformStyle(uc.course?.platform);
+            const { mark, accent, label } = getPlatformStyle(uc.course?.platform);
             return (
-              <div key={uc.id} style={{ display: "flex", gap: 14, padding: "14px 0", borderBottom: i === 0 && continueLearning.length > 1 ? `1px solid rgba(148,163,184,0.1)` : "none" }}>
-                <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${accent}12, ${accent}05)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flexShrink: 0, border: `1px solid ${accent}20`, color: accent, fontFamily: "'General Sans'" }}>
+              <div key={uc.id} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 8px", borderRadius: 12, marginBottom: i === 0 && continueLearning.length > 1 ? 2 : 0, cursor: "pointer" }}
+                onClick={() => navigate(`/courses/${uc.courseId}`)}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${accent}14, ${accent}05)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 700, flexShrink: 0, border: `1px solid ${accent}22`, color: accent, fontFamily: "'General Sans'" }}>
                   {mark}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: T.navy }}>{uc.course?.title}</div>
-                  <div style={{ fontSize: 11.5, color: T.muted }}>{uc.course?.durationHours ? `${uc.course.durationHours}h` : ""}</div>
+                  <div style={{ fontSize: 11.5, color: T.muted }}>{label}{uc.course?.durationHours ? ` · ${uc.course.durationHours}h` : ""}</div>
                 </div>
+                <span style={{ color: T.faint, fontSize: 15, flexShrink: 0 }}>›</span>
               </div>
             );
           })}
@@ -144,16 +209,21 @@ function RealDashboardView({ setCurrentView }) {
         <GlassCard className="fade-up s3">
           <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Assessments</div>
           {history === null && <p style={{ fontSize: 13, color: T.muted }}>Loading…</p>}
-          {history?.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No assessments completed yet.</p>}
+          {history?.length === 0 && (
+            <div style={{ textAlign: "center", padding: "18px 0" }}>
+              <div style={{ fontSize: 26, marginBottom: 6, opacity: 0.6 }}>🧠</div>
+              <p style={{ fontSize: 13, color: T.muted, margin: 0 }}>No assessments completed yet.</p>
+            </div>
+          )}
           {recentAssessments.map((a, i) => (
-            <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < recentAssessments.length - 1 ? "1px solid rgba(148,163,184,0.08)" : "none", cursor: "pointer" }}
+            <div key={a.id} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 8px", borderRadius: 12, marginBottom: i < recentAssessments.length - 1 ? 2 : 0, cursor: "pointer" }}
               onClick={() => navigate(`/assessment/results/${a.id}`)}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", color: T.green }}>✓</div>
+              <ScoreRing score={a.score} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2, color: T.navy }}>{PERSONAS[a.personaId]?.title || a.personaId}</div>
                 <div style={{ fontSize: 11, color: T.muted }}>{a.level}</div>
               </div>
-              <div className="stat-num" style={{ fontSize: 17, color: LEVEL_COLOR(a.score) }}>{a.score}%</div>
+              <span style={{ color: T.faint, fontSize: 15, flexShrink: 0 }}>›</span>
             </div>
           ))}
           <button className="btn-primary" style={{ width: "100%", marginTop: 14, fontSize: 12.5 }} onClick={() => setCurrentView("assess")}>Start Assessment →</button>
@@ -169,7 +239,7 @@ function RealDashboardView({ setCurrentView }) {
         {topSkills.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>Complete an assessment or a course to build your skill profile.</p>}
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           {topSkills.map((s) => (
-            <div key={s.name} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}>
+            <div key={s.name} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}>
               <div style={{ width: 34, height: 34, position: "relative" }}>
                 <ProgressRing progress={s.level} size={34} stroke={3} color={s.level >= 80 ? T.green : s.level >= 60 ? T.blue : T.amber} />
               </div>
@@ -190,49 +260,39 @@ function DemoDashboardView({ profile, selectedSkills, selectedGoal, setCurrentVi
 
   return (
     <div>
-      <div className="fade-up" style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <div className="fade-up" style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <Avatar name={learnerName} />
           <div>
-            <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Good morning{learnerName ? `, ${learnerName}` : ""} ✦</h1>
+            <h1 style={{ fontFamily: "'General Sans'", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>Good morning{learnerName ? `, ${learnerName}` : ""} ✦</h1>
             <p style={{ color: T.muted, fontSize: 14.5 }}>You're <span style={{ color: T.blue, fontWeight: 700 }}>68%</span> of the way to <span style={{ color: T.navy, fontWeight: 600 }}>{selectedGoal}</span></p>
           </div>
-          <GlassCard hover={false} style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 14 }}>🔥</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>7 day streak</span>
-          </GlassCard>
         </div>
+        <GlassCard hover={false} style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 14 }}>🔥</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>7 day streak</span>
+        </GlassCard>
       </div>
 
       {/* Hero Progress */}
-      <GlassCard className="fade-up s1" style={{ background: "linear-gradient(135deg, rgba(37,99,235,0.06), rgba(139,92,246,0.03), rgba(255,255,255,0.6))", border: "1px solid rgba(37,99,235,0.12)", marginBottom: 20, padding: 28 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.blue, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 16, fontFamily: "'General Sans'" }}>Path to {selectedGoal}</div>
-            <div style={{ display: "flex", gap: 28, marginBottom: 20 }}>
-              {[{ v: "12", l: "Skills Acquired" }, { v: "5", l: "Courses Done" }, { v: "3", l: "Assessments" }, { v: "84h", l: "Learning Time" }].map(d => (
-                <div key={d.l}><div className="stat-num" style={{ fontSize: 28, color: T.navy }}>{d.v}</div><div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>{d.l}</div></div>
-              ))}
-            </div>
-            <div style={{ height: 7, background: "rgba(148,163,184,0.1)", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: "68%", background: `linear-gradient(90deg, ${T.blue}, #8B5CF6)`, borderRadius: 4, transition: "width 1.6s cubic-bezier(0.16,1,0.3,1)" }} />
-            </div>
-          </div>
-          <div style={{ marginLeft: 36, position: "relative" }}>
-            <ProgressRing progress={68} size={96} stroke={7} color={T.blue} />
-            <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-              <div className="stat-num" style={{ fontSize: 24, color: T.blue }}>68%</div>
-            </div>
-          </div>
-        </div>
-      </GlassCard>
+      <HeroCard
+        eyebrow={`Path to ${selectedGoal}`}
+        percent={68}
+        stats={[
+          { icon: "🎯", color: T.blue, value: "12", label: "Skills Acquired" },
+          { icon: "📚", color: T.green, value: "5", label: "Courses Done" },
+          { icon: "🧠", color: T.violet, value: "3", label: "Assessments" },
+          { icon: "⏱", color: T.amber, value: "84h", label: "Learning Time" },
+        ]}
+      />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+      <div className="grid-2col" style={{ marginBottom: 20 }}>
         {/* Continue Learning */}
         <GlassCard className="fade-up s2">
           <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Continue Learning</div>
           {COURSES.slice(0, 2).map((c, i) => (
-            <div key={c.id} style={{ display: "flex", gap: 14, padding: "14px 0", borderBottom: i === 0 ? `1px solid rgba(148,163,184,0.1)` : "none" }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${c.accent}12, ${c.accent}05)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flexShrink: 0, border: `1px solid ${c.accent}20`, color: c.accent, fontFamily: "'General Sans'" }}>
+            <div key={c.id} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 8px", borderRadius: 12, marginBottom: i === 0 ? 2 : 0 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${c.accent}14, ${c.accent}05)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flexShrink: 0, border: `1px solid ${c.accent}22`, color: c.accent, fontFamily: "'General Sans'" }}>
                 {c.providerLogo}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -251,20 +311,18 @@ function DemoDashboardView({ profile, selectedSkills, selectedGoal, setCurrentVi
         <GlassCard className="fade-up s3">
           <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Assessments</div>
           {ASSESSMENTS.slice(0, 3).map((a, i) => (
-            <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: i < 2 ? "1px solid rgba(148,163,184,0.08)" : "none" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
-                background: a.status === "completed" ? "rgba(16,185,129,0.08)" : "rgba(148,163,184,0.06)",
-                border: `1px solid ${a.status === "completed" ? "rgba(16,185,129,0.15)" : "rgba(148,163,184,0.1)"}`,
-                color: a.status === "completed" ? T.green : T.faint }}>
-                {a.status === "completed" ? "✓" : "?"}
-              </div>
+            <div key={a.id} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 8px", borderRadius: 12, marginBottom: i < 2 ? 2 : 0 }}>
+              {a.score !== null ? (
+                <ScoreRing score={a.score} />
+              ) : (
+                <div style={{ width: 42, height: 42, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0,
+                  background: "rgba(148,163,184,0.06)", border: "1px solid rgba(148,163,184,0.1)", color: T.faint }}>?</div>
+              )}
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2, color: T.navy }}>{a.skill}</div>
                 <div style={{ fontSize: 11, color: T.muted }}>{a.questions} questions · {a.duration}</div>
               </div>
-              {a.score !== null ? (
-                <div className="stat-num" style={{ fontSize: 17, color: a.score >= 80 ? T.green : "#D97706" }}>{a.score}%</div>
-              ) : (
+              {a.score === null && (
                 <Badge variant={a.status === "available" ? "amber" : "muted"}>{a.status === "available" ? "Take Now" : "Locked"}</Badge>
               )}
             </div>
@@ -283,7 +341,7 @@ function DemoDashboardView({ profile, selectedSkills, selectedGoal, setCurrentVi
           {selectedSkills.map((s, i) => {
             const val = [92, 78, 88, 85, 65][i] || 70;
             return (
-              <div key={s} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}>
+              <div key={s} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}>
                 <div style={{ width: 34, height: 34, position: "relative" }}>
                   <ProgressRing progress={val} size={34} stroke={3} color={val >= 80 ? T.green : val >= 60 ? T.blue : T.amber} />
                 </div>

@@ -113,7 +113,7 @@ function RealEmployerTeamView() {
       {!loading && team.length === 0 && <p style={{ fontSize: 13, color: T.muted }}>No members yet.</p>}
 
       {team.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: selected ? "300px 1fr" : "1fr", gap: 20 }}>
+        <div className={`team-split ${selected ? "" : "is-single"}`}>
           <div className="fade-up s1" style={{ display: "grid", gap: 10, alignContent: "start" }}>
             {departments.length > 0 && (
               <select
@@ -159,7 +159,7 @@ function RealEmployerTeamView() {
                   <div style={{ width: 56, height: 56, borderRadius: 16, background: `linear-gradient(135deg, ${T.blue}18, ${T.blue}08)`, border: `1px solid ${T.blue}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: T.blue, fontFamily: "'General Sans'" }}>{initials(selected)}</div>
                   <div><div style={{ fontSize: 22, fontWeight: 700, color: T.navy, fontFamily: "'General Sans'" }}>{displayName(selected)}</div><div style={{ fontSize: 13.5, color: T.muted }}>{selected.email}</div></div>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+                <div className="grid-3col">
                   {[
                     { v: selected.assessmentsCompleted, l: "Assessments", c: T.blue },
                     { v: selected.coursesCompleted, l: "Courses done", c: T.green },
@@ -236,7 +236,7 @@ function RealEmployerTeamView() {
                   const col = d.score >= 70 ? T.green : d.score >= 40 ? T.amber : T.rose;
                   return (
                     <div key={d.domain} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                      <div style={{ width: 180, fontSize: 13, fontWeight: 500, color: T.slate }}>{d.domain}</div>
+                      <div className="domain-label" style={{ fontSize: 13, fontWeight: 500, color: T.slate }}>{d.domain}</div>
                       <div style={{ flex: 1, height: 6, background: "rgba(148,163,184,0.08)", borderRadius: 3 }}>
                         <div style={{ height: "100%", width: `${d.score}%`, background: col, borderRadius: 3, transition: "width 0.8s" }} />
                       </div>
@@ -261,7 +261,7 @@ function DemoEmployerTeamView() {
         <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Team Skills</h1>
         <p style={{ color: T.muted, fontSize: 14.5 }}>Individual skill wallets and progress tracking</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: sel !== null ? "300px 1fr" : "1fr", gap: 20 }}>
+      <div className={`team-split ${sel !== null ? "" : "is-single"}`}>
         <div className="fade-up s1" style={{ display: "grid", gap: 10, alignContent: "start" }}>
           {EMPLOYEES.map((e, i) => (
             <GlassCard key={e.name} style={{ padding: 16, cursor: "pointer", border: sel === i ? `1px solid ${T.blue}30` : undefined, background: sel === i ? "rgba(37,99,235,0.04)" : undefined }}
@@ -281,7 +281,7 @@ function DemoEmployerTeamView() {
                 <div style={{ width: 56, height: 56, borderRadius: 16, background: `linear-gradient(135deg, ${EMPLOYEES[sel].color}18, ${EMPLOYEES[sel].color}08)`, border: `1px solid ${EMPLOYEES[sel].color}20`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, color: EMPLOYEES[sel].color, fontFamily: "'General Sans'" }}>{EMPLOYEES[sel].avatar}</div>
                 <div><div style={{ fontSize: 22, fontWeight: 700, color: T.navy, fontFamily: "'General Sans'" }}>{EMPLOYEES[sel].name}</div><div style={{ fontSize: 13.5, color: T.muted }}>{EMPLOYEES[sel].role}</div></div>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+              <div className="grid-3col">
                 {[{ v: EMPLOYEES[sel].skills, l: "Skills", c: T.blue }, { v: EMPLOYEES[sel].assessments, l: "Assessments", c: T.green }, { v: EMPLOYEES[sel].trend, l: "Trend", c: T.amber }].map((d, i) => (
                   <div key={i} style={{ textAlign: "center", padding: 14, background: "rgba(255,255,255,0.5)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.6)" }}>
                     <div className="stat-num" style={{ fontSize: 24, color: d.c }}>{d.v}</div>

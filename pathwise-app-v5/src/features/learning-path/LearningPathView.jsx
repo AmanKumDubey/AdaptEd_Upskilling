@@ -13,6 +13,16 @@ import {
 } from "./learningPathBackend";
 import "./learningPath.css";
 
+// A 422 from validate() (middleware/validate.ts) always carries the generic
+// "Validation failed" as error.message - the actual reason is in error.data,
+// an array of { field, message }. Prefer that so a failed generate says why
+// instead of just "Validation failed" (see CourseDetailsPage.jsx's
+// describeApiError for the same fix on the certificate upload flow).
+function describeApiError(error) {
+  const detail = Array.isArray(error?.data) ? error.data[0]?.message : null;
+  return detail || error.message;
+}
+
 const STATUS_LABELS = {
   completed: "Completed",
   current: "In progress",
@@ -60,7 +70,7 @@ export function LearningPathView({ profile }) {
     if (!checkedServer || path || !profile?.onboardingCompleted || !assessmentResult) return;
     setGenerateError("");
     generatePath(profile, assessmentResult).then(setPath).catch((error) => {
-      setGenerateError(error.message || "Couldn't build your roadmap. Please try again.");
+      setGenerateError(describeApiError(error) || "Couldn't build your roadmap. Please try again.");
     });
   }, [checkedServer, assessmentResult, path, profile, setPath]);
 
