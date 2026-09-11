@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Badge, GlassCard, ProgressRing } from "../../components/UIKit";
-import { ASSESSMENTS, COURSES } from "../../data/mockData";
+import { GlassCard, ProgressRing } from "../../components/UIKit";
 import { PERSONAS } from "../../SkillsAssessment";
 import { T } from "../../theme";
-import { authEnabled, loadHistory, loadLatestResult } from "../assessment/assessmentBackend";
+import { loadHistory, loadLatestResult } from "../assessment/assessmentBackend";
 import { getPlatformStyle } from "../courses/courseDisplay";
 import { loadPath } from "../learning-path/learningPathBackend";
 import { loadProfile } from "../onboarding/onboardingBackend";
@@ -85,22 +84,13 @@ function ScoreRing({ score, size = 42 }) {
 }
 
 // ─── Dashboard ───────────────────────────────────────────────────────
-// Split into two full components (rather than branching mid-component) so
-// neither side's hooks can ever collide - authEnabled is fixed at build
-// time, so which one renders never changes across a session anyway (same
-// pattern as AssessmentsView.jsx/EmployerDashboardView.jsx).
-export function DashboardView(props) {
-  return authEnabled ? <RealDashboardView {...props} /> : <DemoDashboardView {...props} />;
-}
-
-// Phase B11: real learners' path %, stats, continue-learning, recent
-// assessments, and skill snapshot - composed entirely from data other
-// features already fetch (Learning Path context, useMyCoursesDashboard,
-// useSkillsWallet, assessment history), rather than a new dashboard-specific
-// backend endpoint. There's no real "streak" concept anywhere in the
-// backend, so unlike the demo view this omits the streak badge instead of
-// fabricating one.
-function RealDashboardView({ setCurrentView }) {
+// Real learners' path %, stats, continue-learning, recent assessments, and
+// skill snapshot - composed entirely from data other features already fetch
+// (Learning Path context, useMyCoursesDashboard, useSkillsWallet, assessment
+// history), rather than a new dashboard-specific backend endpoint. There's
+// no real "streak" concept anywhere in the backend, so this omits a streak
+// badge instead of fabricating one.
+export function DashboardView({ setCurrentView }) {
   const [profile, setProfile] = useProfile();
   const [learningPath, setLearningPath] = useLearningPath();
   const [, setAssessmentResult] = useAssessmentResult();
@@ -249,109 +239,6 @@ function RealDashboardView({ setCurrentView }) {
               </div>
             </div>
           ))}
-        </div>
-      </GlassCard>
-    </div>
-  );
-}
-
-function DemoDashboardView({ profile, selectedSkills, selectedGoal, setCurrentView }) {
-  const learnerName = profile?.firstName?.trim();
-
-  return (
-    <div>
-      <div className="fade-up" style={{ marginBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Avatar name={learnerName} />
-          <div>
-            <h1 style={{ fontFamily: "'General Sans'", fontSize: 32, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 4 }}>Good morning{learnerName ? `, ${learnerName}` : ""} ✦</h1>
-            <p style={{ color: T.muted, fontSize: 14.5 }}>You're <span style={{ color: T.blue, fontWeight: 700 }}>68%</span> of the way to <span style={{ color: T.navy, fontWeight: 600 }}>{selectedGoal}</span></p>
-          </div>
-        </div>
-        <GlassCard hover={false} style={{ padding: "8px 16px", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ fontSize: 14 }}>🔥</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: T.slate }}>7 day streak</span>
-        </GlassCard>
-      </div>
-
-      {/* Hero Progress */}
-      <HeroCard
-        eyebrow={`Path to ${selectedGoal}`}
-        percent={68}
-        stats={[
-          { icon: "🎯", color: T.blue, value: "12", label: "Skills Acquired" },
-          { icon: "📚", color: T.green, value: "5", label: "Courses Done" },
-          { icon: "🧠", color: T.violet, value: "3", label: "Assessments" },
-          { icon: "⏱", color: T.amber, value: "84h", label: "Learning Time" },
-        ]}
-      />
-
-      <div className="grid-2col" style={{ marginBottom: 20 }}>
-        {/* Continue Learning */}
-        <GlassCard className="fade-up s2">
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Continue Learning</div>
-          {COURSES.slice(0, 2).map((c, i) => (
-            <div key={c.id} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 8px", borderRadius: 12, marginBottom: i === 0 ? 2 : 0 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: `linear-gradient(135deg, ${c.accent}14, ${c.accent}05)`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 700, flexShrink: 0, border: `1px solid ${c.accent}22`, color: c.accent, fontFamily: "'General Sans'" }}>
-                {c.providerLogo}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: T.navy }}>{c.title}</div>
-                <div style={{ fontSize: 11.5, color: T.muted }}>{c.provider} · {c.duration}</div>
-                <div style={{ height: 4, background: "rgba(148,163,184,0.08)", borderRadius: 2, marginTop: 8 }}>
-                  <div style={{ height: "100%", width: `${60 - i * 25}%`, background: c.accent, borderRadius: 2, transition: "width 1s" }} />
-                </div>
-              </div>
-            </div>
-          ))}
-          <button className="btn-ghost" style={{ width: "100%", marginTop: 14, fontSize: 12.5 }} onClick={() => setCurrentView("courses")}>View All Courses</button>
-        </GlassCard>
-
-        {/* Assessments */}
-        <GlassCard className="fade-up s3">
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Assessments</div>
-          {ASSESSMENTS.slice(0, 3).map((a, i) => (
-            <div key={a.id} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 8px", borderRadius: 12, marginBottom: i < 2 ? 2 : 0 }}>
-              {a.score !== null ? (
-                <ScoreRing score={a.score} />
-              ) : (
-                <div style={{ width: 42, height: 42, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0,
-                  background: "rgba(148,163,184,0.06)", border: "1px solid rgba(148,163,184,0.1)", color: T.faint }}>?</div>
-              )}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 2, color: T.navy }}>{a.skill}</div>
-                <div style={{ fontSize: 11, color: T.muted }}>{a.questions} questions · {a.duration}</div>
-              </div>
-              {a.score === null && (
-                <Badge variant={a.status === "available" ? "amber" : "muted"}>{a.status === "available" ? "Take Now" : "Locked"}</Badge>
-              )}
-            </div>
-          ))}
-          <button className="btn-primary" style={{ width: "100%", marginTop: 14, fontSize: 12.5 }} onClick={() => setCurrentView("assess")}>Start Assessment →</button>
-        </GlassCard>
-      </div>
-
-      {/* Skills */}
-      <GlassCard className="fade-up s4">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: "'General Sans'" }}>Skills Snapshot</div>
-          <button className="btn-ghost" style={{ fontSize: 11.5, padding: "6px 14px" }} onClick={() => setCurrentView("wallet")}>View Wallet →</button>
-        </div>
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-          {selectedSkills.map((s, i) => {
-            const val = [92, 78, 88, 85, 65][i] || 70;
-            return (
-              <div key={s} className="glass-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderRadius: 14, background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.7)", backdropFilter: "blur(8px)" }}>
-                <div style={{ width: 34, height: 34, position: "relative" }}>
-                  <ProgressRing progress={val} size={34} stroke={3} color={val >= 80 ? T.green : val >= 60 ? T.blue : T.amber} />
-                </div>
-                <div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: T.navy }}>{s}</div>
-                  <div style={{ fontSize: 10, color: T.muted }}>{val >= 80 ? "Expert" : val >= 60 ? "Advanced" : "Intermediate"}</div>
-                </div>
-              </div>
-            );
-          })}
         </div>
       </GlassCard>
     </div>

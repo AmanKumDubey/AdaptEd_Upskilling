@@ -401,6 +401,33 @@ const notifications = pgTable('Notifications', {
   updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
 });
 
+// Phase B29: an owner/admin/hr verifying a specific skill for a member of
+// their organization - replaces Skills Wallet's old "verified" heuristic
+// (score >= 70 or courseCount >= 2) with a real, attributable verification.
+// skillName is free text (skills aren't a fixed enum anywhere in this
+// codebase), so uniqueness is enforced on (userId, skillName).
+const skillVerifications = pgTable('SkillVerifications', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('userId').notNull(),
+  orgId: uuid('orgId').notNull(),
+  skillName: varchar('skillName', { length: 255 }).notNull(),
+  verifiedBy: uuid('verifiedBy').notNull(),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
+// Phase B29: backs a real "Share Wallet" link. One row per user, created
+// lazily the first time they share; `token` is the opaque id used in the
+// public URL so a learner's real userId is never exposed in a link they
+// might paste anywhere.
+const walletShares = pgTable('WalletShares', {
+  id: uuid('id').primaryKey(),
+  userId: uuid('userId').notNull().unique(),
+  token: varchar('token', { length: 64 }).notNull().unique(),
+  createdAt: timestamp('createdAt', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull(),
+});
+
 module.exports = {
   users,
   passwordResets,
@@ -424,4 +451,6 @@ module.exports = {
   assessmentAssignments,
   notifications,
   onboardingProfiles,
+  skillVerifications,
+  walletShares,
 };

@@ -805,7 +805,7 @@ export default function App() {
 
       <div style={card}>
         <div style={{ fontSize: typeScale.xs, textTransform: "uppercase", letterSpacing: "0.12em", color: "rgba(255,255,255,0.35)", marginBottom: 10, fontWeight: 600 }}>Key Design Decisions</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div className="fw-grid-2">
           {[
             { title: "Tag-based matching", desc: "Courses are matched via normalized tags, not rigid category trees. Lets you add new courses without schema changes." },
             { title: "Three-phase path assembly", desc: "Remediate → Consolidate → Advance ensures learners don't skip foundations while still progressing." },
@@ -896,7 +896,7 @@ export default function App() {
         <div style={{ fontSize: typeScale.xs, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", marginBottom: 10, fontWeight: 600 }}>Field Reference</div>
         <div style={{ display: "grid", gap: 6 }}>
           {Object.entries(LEARNING_NODE_SCHEMA.properties).map(([key, val]) => (
-            <div key={key} style={{ display: "grid", gridTemplateColumns: "160px 1fr", gap: 8, padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "start" }}>
+            <div key={key} className="fw-kv-row" style={{ padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "start" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <code style={{ fontSize: typeScale.xs, color: "#F59E0B", fontFamily: "monospace" }}>{key}</code>
                 {LEARNING_NODE_SCHEMA.required.includes(key) && badge("#EF4444", "req")}
@@ -907,7 +907,7 @@ export default function App() {
                 {key === "match_criteria" && (
                   <div style={{ marginTop: 8, paddingLeft: 12, borderLeft: "2px solid rgba(255,255,255,0.06)" }}>
                     {Object.entries(val.properties).map(([mk, mv]) => (
-                      <div key={mk} style={{ padding: "4px 0", display: "flex", gap: 8, alignItems: "start" }}>
+                      <div key={mk} style={{ padding: "4px 0", display: "flex", gap: 8, alignItems: "start", flexWrap: "wrap" }}>
                         <code style={{ fontSize: typeScale.xs, color: "#8B5CF6", fontFamily: "monospace", minWidth: 160 }}>{mk}</code>
                         <span style={{ fontSize: typeScale.xs, color: "rgba(255,255,255,0.4)" }}>{mv.description}</span>
                       </div>
@@ -944,7 +944,7 @@ export default function App() {
         <div style={{ fontSize: typeScale.xs, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.3)", marginBottom: 10, fontWeight: 600 }}>Required Fields for Course Ingestion</div>
         <div style={{ display: "grid", gap: 6 }}>
           {Object.entries(COURSE_SCHEMA.properties).map(([key, val]) => (
-            <div key={key} style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 8, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+            <div key={key} className="fw-kv-row-wide" style={{ padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <code style={{ fontSize: typeScale.xs, color: "#059669", fontFamily: "monospace" }}>{key}</code>
                 {COURSE_SCHEMA.required.includes(key) && badge("#EF4444", "req")}
@@ -989,7 +989,7 @@ export default function App() {
         <div style={{ fontSize: typeScale.sm, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>4-step pipeline: Hard Filters → Recency → Scoring → Ranking</div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div className="fw-grid-2">
         {[
           { step: "1", title: "Hard Filters", desc: "Required tags (AND), excluded tags (NOT ANY), difficulty range, duration range, persona match. Eliminates non-candidates.", color: "#EF4444", pts: "Pass/Fail" },
           { step: "2", title: "Recency Filter", desc: "If node.recency_weight = 'critical', removes courses older than 12 months. GenAI nodes always use this.", color: "#F59E0B", pts: "Pass/Fail" },
@@ -1018,7 +1018,7 @@ export default function App() {
             { signal: "Recency bonus", pts: "0–3", weight: "7.5%", desc: "<6mo = 3, <12mo = 2, <24mo = 1" },
             { signal: "Quality signals", pts: "0–4", weight: "10%", desc: "(rating/5)×2 + completion_rate×2" }
           ].map((s, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "180px 60px 50px 1fr", gap: 8, padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: typeScale.xs, alignItems: "center" }}>
+            <div key={i} className="fw-scoring-row" style={{ padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: typeScale.xs, alignItems: "center" }}>
               <span style={{ fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>{s.signal}</span>
               <span style={{ color: "#3B82F6", fontFamily: "monospace" }}>{s.pts}</span>
               <span style={{ color: "rgba(255,255,255,0.3)" }}>{s.weight}</span>
@@ -1053,10 +1053,10 @@ export default function App() {
         </div>
         <div style={{ display: "grid", gap: 6 }}>
           {ASSESSMENT_EXAMPLE.input.domain_scores.map(d => (
-            <div key={d.code} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div key={d.code} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
               <code style={{ fontSize: typeScale.xs, color: "#F59E0B", fontFamily: "monospace", minWidth: 90 }}>{d.code}</code>
               <span style={{ fontSize: typeScale.sm, minWidth: 140 }}>{d.label}</span>
-              <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
+              <div style={{ flex: 1, minWidth: 80, height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${d.pct}%`, background: d.level < ASSESSMENT_EXAMPLE.input.overall_level ? "#EF4444" : d.level === ASSESSMENT_EXAMPLE.input.overall_level ? "#3B82F6" : "#22C55E", borderRadius: 3 }} />
               </div>
               <span style={{ fontSize: typeScale.xs, fontFamily: "monospace", color: "rgba(255,255,255,0.4)", minWidth: 30, textAlign: "right" }}>{d.pct}%</span>
@@ -1081,9 +1081,9 @@ export default function App() {
               </div>
               <div style={{ display: "grid", gap: 6, paddingLeft: 16 }}>
                 {phase.nodes.map((n, ni) => (
-                  <div key={ni} style={{ display: "flex", gap: 10, padding: "8px 12px", borderRadius: "6px", background: "rgba(255,255,255,0.02)", alignItems: "center" }}>
+                  <div key={ni} style={{ display: "flex", gap: 10, padding: "8px 12px", borderRadius: "6px", background: "rgba(255,255,255,0.02)", alignItems: "center", flexWrap: "wrap" }}>
                     <code style={{ fontSize: typeScale.xs, color: phaseColors[phase.phase], fontFamily: "monospace", minWidth: 130 }}>{n.id}</code>
-                    <span style={{ flex: 1, fontSize: typeScale.sm }}>{n.title}</span>
+                    <span style={{ flex: 1, minWidth: 120, fontSize: typeScale.sm }}>{n.title}</span>
                     <span style={{ fontSize: typeScale.xs, color: "rgba(255,255,255,0.3)" }}>{n.hours}h</span>
                     {badge("rgba(255,255,255,0.3)", n.level)}
                   </div>
@@ -1129,6 +1129,18 @@ export default function App() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
         pre::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+
+        /* Mobile pass: this page's fixed-column grids (key/value rows, the
+           4-column scoring table) don't fit a narrow phone at their built-in
+           widths - collapse everything to a single column below 640px. */
+        .fw-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .fw-kv-row { display: grid; grid-template-columns: 160px 1fr; gap: 8px; }
+        .fw-kv-row-wide { display: grid; grid-template-columns: 180px 1fr; gap: 8px; }
+        .fw-scoring-row { display: grid; grid-template-columns: 180px 60px 50px 1fr; gap: 8px; }
+        @media (max-width: 640px) {
+          .fw-grid-2, .fw-kv-row, .fw-kv-row-wide { grid-template-columns: 1fr; }
+          .fw-scoring-row { grid-template-columns: 1fr; }
+        }
       `}</style>
 
       {/* Header */}

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { getCourseById } from "../courses/courseData";
 import { formatRelativeTime } from "../../utils/time";
 import { useAssessmentResult, useCourseProgress, useProfile } from "../../state/PathwiseDataContext";
-import { useMyCoursesDashboard } from "../../hooks";
+import { useMyCoursesDashboard, useMySkillVerifications } from "../../hooks";
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
 
@@ -39,7 +39,11 @@ function upsert(registry, name, patch) {
  * they're the mock catalog's entries (see useSkillsWallet below) - either
  * way this function doesn't care where they came from.
  */
-export function buildSkillsWallet({ profile, result, completedCourses }) {
+// Phase B29: `verifiedNames` (lowercased skill names) comes from real
+// SkillVerifications rows an owner/admin/hr granted (see EmployerTeamView.jsx) -
+// this replaces the old self-computed heuristic (score >= 70 or courseCount >= 2),
+// which called a skill "verified" without anyone actually verifying it.
+export function buildSkillsWallet({ profile, result, completedCourses, verifiedNames = new Set() }) {
   const registry = new Map();
 
   (profile?.skills || []).forEach((skill) => {
@@ -51,7 +55,6 @@ export function buildSkillsWallet({ profile, result, completedCourses }) {
     const existing = registry.get(domain.toLowerCase());
     upsert(registry, domain, {
       level: Math.max(existing?.level || 0, score),
-      verified: Boolean(existing?.verified) || score >= 70,
       assessed: formatRelativeTime(result.completedAt),
     });
   });
@@ -63,10 +66,15 @@ export function buildSkillsWallet({ profile, result, completedCourses }) {
       upsert(registry, skill, {
         courses: courseCount,
         level: Math.min(95, Math.max(existing?.level || 0, (existing?.level || 30) + 15)),
-        verified: Boolean(existing?.verified) || courseCount >= 2,
       });
     });
   });
+
+  // Real verification always wins, applied after every source has had a
+  // chance to create/update its registry entry.
+  for (const [key, entry] of registry) {
+    if (verifiedNames.has(key)) registry.set(key, { ...entry, verified: true });
+  }
 
   const skills = Array.from(registry.values()).sort((a, b) => b.level - a.level);
   const totalSkills = skills.length;
@@ -98,6 +106,7 @@ export function useSkillsWallet() {
   // value, so hook-call order never actually varies between renders; matches
   // how CoursesView.jsx/CourseDetailsPage.jsx already call this unconditionally.
   const dashboard = useMyCoursesDashboard();
+  const verifications = useMySkillVerifications();
 
   const completedCourses = useMemo(
     () => (authEnabled
@@ -106,8 +115,13 @@ export function useSkillsWallet() {
     [dashboard.data, courseProgress],
   );
 
+  const verifiedNames = useMemo(
+    () => new Set((verifications.data || []).map((v) => v.skillName.toLowerCase())),
+    [verifications.data],
+  );
+
   return useMemo(
-    () => buildSkillsWallet({ profile, result, completedCourses }),
-    [profile, result, completedCourses],
+    () => buildSkillsWallet({ profile, result, completedCourses, verifiedNames }),
+    [profile, result, completedCourses, verifiedNames],
   );
 }

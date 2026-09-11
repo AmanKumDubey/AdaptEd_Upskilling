@@ -4,7 +4,7 @@ import { Badge, GlassCard, ProgressRing } from "../../components/UIKit";
 import { T } from "../../theme";
 import { useProfile, useAssessmentResult, useCourseProgress } from "../../state/PathwiseDataContext";
 import { getCertificates } from "../courses/courseStorage";
-import { useCertificates } from "../../hooks";
+import { useCertificates, useMyWalletShare } from "../../hooks";
 import { useSkillsWallet } from "./skillsEngine";
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === "true";
@@ -37,6 +37,10 @@ export function SkillsWalletView() {
   // Always called (not conditionally) - authEnabled is a fixed build-time
   // value, so hook-call order never actually varies between renders.
   const realCertificates = useCertificates();
+  // Phase B29: a real, public, read-only wallet page (GET /public/wallet/:token) -
+  // replaces the old clipboard-text-summary "share", which wasn't actually
+  // shareable to anyone without the raw text being pasted somewhere.
+  const walletShare = useMyWalletShare();
   const certificates = useMemo(
     () => (authEnabled
       ? (realCertificates.data || []).map(toWalletCertificate)
@@ -45,13 +49,15 @@ export function SkillsWalletView() {
   );
 
   async function shareWallet() {
-    const summary = [
-      `${profile?.firstName || "Learner"}'s Pathwise Skills Wallet`,
-      `${wallet.stats.totalSkills} skills · ${wallet.stats.verified} verified · ${wallet.stats.avgProficiency}% avg. proficiency`,
-      ...wallet.skills.slice(0, 5).map((skill) => `- ${skill.name}: ${skill.level}% (${LEVEL_LABEL(skill.level)})`),
-    ].join("\n");
+    const linkText = authEnabled && walletShare.data?.token
+      ? `${window.location.origin}/wallet/${walletShare.data.token}`
+      : [
+          `${profile?.firstName || "Learner"}'s Pathwise Skills Wallet`,
+          `${wallet.stats.totalSkills} skills · ${wallet.stats.verified} verified · ${wallet.stats.avgProficiency}% avg. proficiency`,
+          ...wallet.skills.slice(0, 5).map((skill) => `- ${skill.name}: ${skill.level}% (${LEVEL_LABEL(skill.level)})`),
+        ].join("\n");
     try {
-      await navigator.clipboard.writeText(summary);
+      await navigator.clipboard.writeText(linkText);
       setShared(true);
       setTimeout(() => setShared(false), 2000);
     } catch {

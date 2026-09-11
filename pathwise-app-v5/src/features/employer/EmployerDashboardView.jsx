@@ -1,8 +1,6 @@
 import { useOutletContext } from "react-router-dom";
 import { GlassCard } from "../../components/UIKit";
-import { EMPLOYEES } from "../../data/mockData";
 import { T } from "../../theme";
-import { authEnabled } from "./employerAccess";
 import { averagePathProgress, averageScore, displayName, domainRollup, downloadCSV, initials, teamToCSV, topDomains, useTeamProgress } from "./employerData";
 import { NoOrgAccess } from "./NoOrgAccess";
 
@@ -60,20 +58,12 @@ function DomainBar({ label, value, color }) {
 }
 
 // ─── Employer Dashboard ──────────────────────────────────────────────
-// Split into two full components (rather than branching mid-component) so
-// neither side's hooks can ever collide - authEnabled is fixed at build
-// time, so which one renders never changes across a session anyway.
+// Real team data (adapted-backend's GET /api/orgs/:orgId/team-progress) for
+// whichever organization this user manages. The old "Skills Gap Analysis"
+// section compared team scores against a "target" that doesn't exist as real
+// data anywhere (no target-setting feature) - replaced with a team-wide
+// domain average instead of inventing target numbers.
 export function EmployerDashboardView() {
-  return authEnabled ? <RealEmployerDashboard /> : <DemoEmployerDashboard />;
-}
-
-// Phase B10: real team data (adapted-backend's GET /api/orgs/:orgId/team-progress)
-// for whichever organization this user manages - replaces the fabricated
-// EMPLOYEES mock roster and hand-typed stat cards. The old "Skills Gap
-// Analysis" section compared team scores against a "target" that doesn't
-// exist as real data anywhere (no target-setting feature) - replaced with a
-// team-wide domain average instead of inventing target numbers.
-function RealEmployerDashboard() {
   const { employerAccess } = useOutletContext();
   const { data: team, loading } = useTeamProgress(employerAccess.org?.id);
 
@@ -154,64 +144,3 @@ function RealEmployerDashboard() {
 }
 
 const LEVEL_COLOR = (score) => (score >= 80 ? T.green : score >= 60 ? T.blue : score >= 40 ? T.amber : T.rose);
-
-function DemoEmployerDashboard() {
-  return (
-    <div>
-      <div className="fade-up" style={{ marginBottom: 32 }}>
-        <h1 style={{ fontFamily: "'General Sans'", fontSize: 34, fontWeight: 700, letterSpacing: "-0.03em", marginBottom: 6 }}>Team Overview</h1>
-        <p style={{ color: T.muted, fontSize: 14.5 }}>Monitor your team's learning progress and skill development</p>
-      </div>
-
-      <div className="fade-up s1 grid-4col" style={{ marginBottom: 28 }}>
-        {[
-          { icon: "👥", label: "Team Members", value: "5", sub: "+2 this month", color: T.blue },
-          { icon: "🎯", label: "Avg. Skill Score", value: "86", sub: "+4 from last month", color: T.green },
-          { icon: "📚", label: "Courses Active", value: "12", sub: "across 4 paths", color: T.amber },
-          { icon: "🧠", label: "Assessments", value: "36", sub: "89% pass rate", color: T.violet },
-        ].map((s) => <StatCard key={s.label} {...s} subColor={T.green} />)}
-      </div>
-
-      <GlassCard className="fade-up s2" style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Team Leaderboard</div>
-        {EMPLOYEES.map((e, i) => (
-          <LeaderRow
-            key={e.name}
-            rank={i + 1}
-            avatarColor={e.color}
-            avatarLabel={e.avatar}
-            name={e.name}
-            meta={e.role}
-            tags={e.topSkills}
-            score={e.score}
-            scoreLabel={e.trend}
-            scoreColor={T.green}
-            isLast={i === EMPLOYEES.length - 1}
-          />
-        ))}
-      </GlassCard>
-
-      <GlassCard className="fade-up s3">
-        <div style={{ fontSize: 11, fontWeight: 700, color: T.faint, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 18, fontFamily: "'General Sans'" }}>Skills Gap Analysis</div>
-        {[
-          { skill: "Machine Learning", team: 78, target: 90, gap: 12 },
-          { skill: "System Design", team: 62, target: 85, gap: 23 },
-          { skill: "Cloud Infra", team: 55, target: 80, gap: 25 },
-          { skill: "Data Engineering", team: 70, target: 85, gap: 15 },
-        ].map(g => (
-          <div key={g.skill} style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 14 }}>
-            <div style={{ width: 130, fontSize: 13, fontWeight: 600, color: T.slate }}>{g.skill}</div>
-            <div style={{ flex: 1, position: "relative", height: 8, background: "rgba(148,163,184,0.08)", borderRadius: 4 }}>
-              <div style={{ position: "absolute", height: "100%", width: `${g.team}%`, background: g.gap > 20 ? T.rose : g.gap > 10 ? T.amber : T.green, borderRadius: 4, transition: "width 1s", boxShadow: `0 0 8px ${(g.gap > 20 ? T.rose : g.gap > 10 ? T.amber : T.green)}50` }} />
-              <div style={{ position: "absolute", left: `${g.target}%`, top: -3, bottom: -3, width: 2.5, background: T.navy, borderRadius: 2, opacity: 0.2 }} />
-            </div>
-            <div style={{ width: 50, textAlign: "right" }}>
-              <span className="stat-num" style={{ fontSize: 12, color: g.gap > 20 ? T.rose : g.gap > 10 ? T.amber : T.green }}>-{g.gap}%</span>
-            </div>
-          </div>
-        ))}
-        <div style={{ fontSize: 11, color: T.faint, marginTop: 8 }}>Bars = team average · Lines = target proficiency</div>
-      </GlassCard>
-    </div>
-  );
-}

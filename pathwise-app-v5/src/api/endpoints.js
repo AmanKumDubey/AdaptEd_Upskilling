@@ -230,6 +230,32 @@ export const organizations = {
   // DELETE /api/orgs/:orgId/assessment-assignments/:assignmentId (owner/admin/hr only)
   revokeAssignment: (orgId, assignmentId) =>
     api.delete(`/orgs/${orgId}/assessment-assignments/${assignmentId}`),
+
+  // POST /api/orgs/:orgId/members/:memberId/skill-verifications  { skillName } (owner/admin/hr only)
+  verifySkill: (orgId, memberId, skillName) =>
+    api.post(`/orgs/${orgId}/members/${memberId}/skill-verifications`, { skillName }),
+
+  // DELETE /api/orgs/:orgId/members/:memberId/skill-verifications/:skillName (owner/admin/hr only)
+  unverifySkill: (orgId, memberId, skillName) =>
+    api.delete(`/orgs/${orgId}/members/${memberId}/skill-verifications/${encodeURIComponent(skillName)}`),
+
+  // GET /api/orgs/:orgId/members/:memberId/skill-verifications (owner/admin/hr only)
+  listMemberSkillVerifications: (orgId, memberId) =>
+    api.get(`/orgs/${orgId}/members/${memberId}/skill-verifications`),
+};
+
+// GET /api/me/skill-verifications -> [{ skillName, verifiedBy, orgId, createdAt }]
+export const skillVerifications = {
+  listMine: () => api.get("/me/skill-verifications"),
+};
+
+// ─── Skills Wallet share link (Phase B29) ─────────────────────────────
+export const walletShare = {
+  // GET /api/me/wallet-share -> { token } (creates one lazily on first call)
+  getMine: () => api.get("/me/wallet-share"),
+
+  // GET /api/public/wallet/:token -> { firstName, skills, stats } - no auth.
+  getPublic: (token) => api.get(`/public/wallet/${token}`, null, { requiresAuth: false }),
 };
 
 // GET /api/me/assessment-assignments -> [{ id, personaId, dueAt, completed, createdAt }]

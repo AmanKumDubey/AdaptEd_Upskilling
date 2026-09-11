@@ -27,6 +27,13 @@ function AuthenticatedApp() {
     return <App />;
   }
 
+  // A shared Skills Wallet link (Phase B29) is meant to be viewable by
+  // anyone with the link, logged in or not - PublicWalletPage itself hits
+  // the one genuinely public, unauthenticated API endpoint in this app.
+  if (location.pathname.startsWith("/wallet/") && !loading) {
+    return <App />;
+  }
+
   if (loading) {
     return (
       <main className="app-loading-shell">

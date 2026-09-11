@@ -31,6 +31,9 @@ const learningPathRoutes = require('./routes/learningPathRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const meAssignmentRoutes = require('./routes/meAssignmentRoutes');
 const meOnboardingProfileRoutes = require('./routes/meOnboardingProfileRoutes');
+const meSkillVerificationRoutes = require('./routes/meSkillVerificationRoutes');
+const walletShareRoutes = require('./routes/walletShareRoutes');
+const publicWalletRoutes = require('./routes/publicWalletRoutes');
 
 // Middleware
 app.use(helmet()); // Security headers
@@ -99,6 +102,15 @@ app.use('/api/me/assessment-assignments', meAssignmentRoutes);
 
 // Onboarding wizard profile, persisted per account (Phase B17)
 app.use('/api/me/onboarding-profile', meOnboardingProfileRoutes);
+
+// Skill verifications - a learner's own view (Phase B29); the granting side
+// (POST/DELETE) lives on organizationRoutes since only an owner/admin/hr can verify.
+app.use('/api/me/skill-verifications', meSkillVerificationRoutes);
+
+// Skills Wallet share link (Phase B29) - authenticated get-or-create, plus
+// the one genuinely public, unauthenticated read in this API.
+app.use('/api/me/wallet-share', walletShareRoutes);
+app.use('/api/public/wallet', publicWalletRoutes);
 
 // Phase 1 stabilization: this endpoint now verifies PostgreSQL, not only the HTTP server.
 app.get('/api/health', healthCheck);

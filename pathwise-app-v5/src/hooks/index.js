@@ -23,6 +23,8 @@ import {
   invitations as invitationsApi,
   notifications as notificationsApi,
   myAssignments as myAssignmentsApi,
+  skillVerifications as skillVerificationsApi,
+  walletShare as walletShareApi,
 } from "../api/endpoints";
 
 // ─── Not implemented on the backend yet ──────────────────────────────
@@ -244,6 +246,35 @@ export function useRevokeAssignment() {
 
 export function useMyAssignments() {
   return useApi(() => myAssignmentsApi.listMine(), { initialData: [] });
+}
+
+// ─── Skill verifications (Phase B29) ──────────────────────────────────
+// Replaces Skills Wallet's old "verified" heuristic (score >= 70 or
+// courseCount >= 2) with a real, attributable verification an owner/admin/hr
+// grants from EmployerTeamView.
+export function useMySkillVerifications() {
+  return useApi(() => skillVerificationsApi.listMine(), { initialData: [] });
+}
+
+export function useVerifySkill() {
+  return useMutation(({ orgId, memberId, skillName }) => organizationsApi.verifySkill(orgId, memberId, skillName));
+}
+
+export function useUnverifySkill() {
+  return useMutation(({ orgId, memberId, skillName }) => organizationsApi.unverifySkill(orgId, memberId, skillName));
+}
+
+export function useMemberSkillVerifications(orgId, memberId) {
+  return useApi(() => organizationsApi.listMemberSkillVerifications(orgId, memberId), {
+    initialData: [],
+    enabled: !!orgId && !!memberId,
+    deps: [orgId, memberId],
+  });
+}
+
+// ─── Skills Wallet share link (Phase B29) ─────────────────────────────
+export function useMyWalletShare() {
+  return useApi(() => walletShareApi.getMine(), { initialData: null });
 }
 
 // ─── Notifications ───────────────────────────────────────────────────

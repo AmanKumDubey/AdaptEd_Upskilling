@@ -2,17 +2,17 @@ import { useState } from "react";
 import { Badge, GlassCard } from "../../components/UIKit";
 import { T } from "../../theme";
 import { PERSONAS } from "../../SkillsAssessment";
-import { useCreateAssignment, useOrgAssignments, useRevokeAssignment } from "../../hooks";
+import { useCreateAssignment, useRevokeAssignment } from "../../hooks";
 import { displayName } from "./employerData";
 
-// Phase B16: replaces the honest "not built yet" placeholder that used to sit
-// here - an owner/admin/hr can now assign a specific assessment track to a
-// team member. "Completed" is derived server-side (a real result dated after
-// the assignment), not a separate flag this UI has to keep in sync.
-export function AssignmentsPanel({ orgId, team }) {
+// Phase B16: an owner/admin/hr can assign a specific assessment track to a
+// single team member. "Completed" is derived server-side (a real result
+// dated after the assignment), not a separate flag this UI has to keep in
+// sync. `assignments`/`loading`/`refetch` are lifted to EmployerAssessmentsView
+// and shared with BulkAssignPanel so one list stays in sync across both.
+export function AssignmentsPanel({ orgId, team, assignments, loading, refetch }) {
   const [userId, setUserId] = useState("");
   const [personaId, setPersonaId] = useState("tech");
-  const { data: assignments, loading, refetch } = useOrgAssignments(orgId);
   const { execute: createAssignment, loading: assigning, error } = useCreateAssignment();
   const { execute: revoke, loading: revoking } = useRevokeAssignment();
   const [revokingId, setRevokingId] = useState(null);

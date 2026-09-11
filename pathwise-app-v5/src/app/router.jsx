@@ -24,6 +24,7 @@ import { SkillsWalletView } from "../features/skills/SkillsWalletView";
 import { useProfile } from "../state/PathwiseDataContext";
 import { NotFoundPage } from "../pages/NotFoundPage";
 import { ProfilePage } from "../pages/ProfilePage";
+import { PublicWalletPage } from "../pages/PublicWalletPage";
 import { DashboardView as ApiDashboardView } from "../views/DashboardView";
 
 const LIVE_DASHBOARD_ENABLED =
@@ -154,6 +155,7 @@ export function AppRouter() {
       <Route path="/assessment/results/:resultId" element={<AssessmentResultsPage />} />
       <Route path="/admin/learning-path-framework" element={<FrameworkRoute />} />
       <Route path="/invitations/accept" element={<AcceptInvitationPage />} />
+      <Route path="/wallet/:token" element={<PublicWalletPage />} />
 
       <Route element={<PathwisePlatform />}>
         <Route path="/dashboard" element={<DashboardRoute />} />

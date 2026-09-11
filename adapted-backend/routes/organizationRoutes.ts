@@ -16,6 +16,7 @@ const {
   invitationIdParamSchema,
 } = require('../schemas/organizationSchemas');
 const { createAssignmentSchema, assignmentIdParamSchema } = require('../schemas/assessmentAssignmentSchemas');
+const { verifySkillSchema, memberSkillParamSchema } = require('../schemas/skillVerificationSchemas');
 const {
   createOrganization,
   listMyOrganizations,
@@ -38,6 +39,11 @@ const {
   listOrgAssignments,
   revokeAssignment,
 } = require('../controllers/assessmentAssignmentController');
+const {
+  verifySkill,
+  unverifySkill,
+  listMemberSkillVerifications,
+} = require('../controllers/skillVerificationController');
 
 // All routes below require authentication
 router.use(authenticate);
@@ -112,6 +118,31 @@ router.delete(
   requireOrgRole('owner', 'admin', 'hr'),
   validate(invitationIdParamSchema, 'params'),
   revokeInvitation,
+);
+
+// GET /api/orgs/:orgId/members/:memberId/skill-verifications
+router.get(
+  '/:orgId/members/:memberId/skill-verifications',
+  requireOrgRole('owner', 'admin', 'hr'),
+  validate(memberIdParamSchema, 'params'),
+  listMemberSkillVerifications,
+);
+
+// POST /api/orgs/:orgId/members/:memberId/skill-verifications
+router.post(
+  '/:orgId/members/:memberId/skill-verifications',
+  requireOrgRole('owner', 'admin', 'hr'),
+  validate(memberIdParamSchema, 'params'),
+  validate(verifySkillSchema),
+  verifySkill,
+);
+
+// DELETE /api/orgs/:orgId/members/:memberId/skill-verifications/:skillName
+router.delete(
+  '/:orgId/members/:memberId/skill-verifications/:skillName',
+  requireOrgRole('owner', 'admin', 'hr'),
+  validate(memberSkillParamSchema, 'params'),
+  unverifySkill,
 );
 
 // POST /api/orgs/:orgId/assessment-assignments
